@@ -144,7 +144,9 @@ export async function verifyFirebaseToken(token, env, keysFn = googleKeys) {
   if (!list(env.ALLOWED_PROJECTS).includes(claims.aud)) return null;
   if (claims.iss !== "https://securetoken.google.com/" + claims.aud) return null;
   if (!(claims.exp > now) || !(claims.iat <= now + 60)) return null;
-  if (!list(env.ADMIN_EMAILS).map((e) => e.toLowerCase()).includes(String(claims.email || "").toLowerCase())) return null;
+  const email = String(claims.email || "").toLowerCase();
+  const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email)))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  if (!list(env.ADMIN_EMAILS).map((e) => e.toLowerCase()).includes(email) && !list(env.ADMIN_EMAIL_HASHES).includes(hash)) return null;
   return claims;
 }
 

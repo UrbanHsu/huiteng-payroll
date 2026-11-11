@@ -10,6 +10,8 @@ workers_dev = true
 ALLOWED_PROJECTS = "huiteng-payroll-ddef6,yun-salary"
 # 管理者帳號（逗號分隔）
 ADMIN_EMAILS = "ilms.always03@gmail.com"
+# 不想公開的管理者帳號，放 Email（小寫）的 SHA-256 雜湊值（逗號分隔）
+ADMIN_EMAIL_HASHES = "6df5deb4c527cac752745cf572c3a675cf3531616796ed142641722738314c95"
 # 允許的網頁來源（CORS）
 ALLOWED_ORIGINS = "https://urbanhsu.github.io"
 
