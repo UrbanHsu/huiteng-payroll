@@ -18,3 +18,11 @@ export const firebaseConfig = {
 export const STAFF_DOMAIN = "@staff.huiteng-payroll.app";
 
 export const isConfigured = () => !!firebaseConfig.apiKey && !!firebaseConfig.projectId;
+
+/** LINE 推播中心（Cloudflare Worker，三套系統共用） */
+export const LINE_CENTER_URL = "https://hh-line-center.huihui-clinic.workers.dev";
+/** 這套系統在推播中心的代號、診所名稱（印在 LINE 薪資單抬頭） */
+export const LINE_SYSTEM = "huiteng";
+export const CLINIC_NAME = "惠騰內科診所";
+/** 員工加好友連結 */
+export const LINE_ADD_FRIEND_URL = "https://lin.ee/nmhN9bY";

@@ -122,7 +122,8 @@ details .in-body{padding:10px}
     <button class="tab" data-v="table" aria-selected="false">② 薪資表</button>
     <button class="tab" data-v="slips" aria-selected="false">③ 薪資單</button>
     <button class="tab" data-v="board" aria-selected="false">④ 團隊看板</button>
-    <button class="tab" data-v="params" aria-selected="false">⑤ 參數</button>
+    <button class="tab" data-v="line" aria-selected="false">⑤ LINE 推播</button>
+    <button class="tab" data-v="params" aria-selected="false">⑥ 參數</button>
   </div>
 </div>
 
@@ -148,6 +149,7 @@ details .in-body{padding:10px}
     <section id="v-table" hidden></section>
     <section id="v-slips" hidden></section>
     <section id="v-board" hidden></section>
+    <section id="v-line" hidden></section>
     <section id="v-params" hidden></section>
   </div>
 </main>
@@ -155,7 +157,8 @@ details .in-body{padding:10px}
 
 <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
 <script type="module">
-import { firebaseConfig, STAFF_DOMAIN, isConfigured } from "./firebase-config.js";
+import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL } from "./firebase-config.js";
+import { slipFlexMessage } from "./line-flex.js";
 import { computePayroll, absentSessions } from "./engine.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -227,7 +230,7 @@ async function loadAll() {
   S.proxy = {}; prox.forEach((d) => { const x = d.data(); if (x.target) S.proxy[x.target] = x; });
   recompute();
 }
-$("#monthInput").onchange = () => { if (auth.currentUser) loadAll(); };
+$("#monthInput").onchange = () => { L.results = null; if (auth.currentUser) loadAll(); };
 
 let saveT;
 function saveMonth() {
@@ -247,15 +250,15 @@ $$(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.v)));
 function showView(v) {
   S.view = v;
   $$(".tab").forEach((t) => t.setAttribute("aria-selected", t.dataset.v === v));
-  ["data", "table", "slips", "board", "params"].forEach((k) => ($("#v-" + k).hidden = k !== v));
+  ["data", "table", "slips", "board", "line", "params"].forEach((k) => ($("#v-" + k).hidden = k !== v));
   render();
 }
 function render() {
   if (!S.params && S.view !== "params") {
-    $("#v-" + S.view).innerHTML = `<div class="card"><h2>還沒有人員與規則參數</h2><div class="sub">請到「⑤ 參數」匯入參數檔（JSON）後才能計算。</div><button class="btn primary" type="button" id="goParams">前往參數</button></div>`;
+    $("#v-" + S.view).innerHTML = `<div class="card"><h2>還沒有人員與規則參數</h2><div class="sub">請到「⑥ 參數」匯入參數檔（JSON）後才能計算。</div><button class="btn primary" type="button" id="goParams">前往參數</button></div>`;
     $("#goParams").onclick = () => showView("params"); return;
   }
-  ({ data: renderData, table: renderTable, slips: renderSlips, board: renderBoard, params: renderParams })[S.view]();
+  ({ data: renderData, table: renderTable, slips: renderSlips, board: renderBoard, line: renderLine, params: renderParams })[S.view]();
 }
 const people = () => S.params.people;
 const pool = () => S.params.people.filter((p) => p.inPool);
@@ -429,7 +432,87 @@ function renderBoard() {
   $("#dlBoard").onclick = () => savePng($("#boardPic .pic"), `0_${m}月團隊自費獎金池.png`);
 }
 
-/* ⑤ 參數 */
+
+/* ⑤ LINE 推播 */
+async function lineApi(path, body) {
+  const t = await auth.currentUser.getIdToken();
+  const r = await fetch(LINE_CENTER_URL + path, { method: "POST", headers: { authorization: "Bearer " + t, "content-type": "application/json" }, body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+  return j;
+}
+const L = { status: null, results: null, busy: false };
+function flexFor(r) {
+  const { y, m } = ymLabel();
+  const ty = S.month.typhoonHours ? `${S.month.typhoonNote || "本月颱風停診"}，共 ${S.month.typhoonHours} 小時依規定不支薪。\n` : "";
+  return slipFlexMessage(r, { clinic: CLINIC_NAME, year: +y, month: m, footer: ty + "薪資屬個人資料，請勿外流或探詢他人薪資。如有疑問請直接洽徐院長。" });
+}
+async function loadLineStatus(ensureCodes) {
+  L.status = await lineApi("/api/status", { system: LINE_SYSTEM, people: people().map((p) => ({ id: p.id, name: p.name })), ensureCodes });
+}
+function inviteText(p, code) {
+  return `${p.name} 您好，薪資單之後會改用 LINE 傳送給您本人。\n\n1. 加入官方帳號：${LINE_ADD_FRIEND_URL}\n2. 在對話裡傳送您的綁定碼：${code}\n\n看到「綁定完成」就可以了。綁定碼只給您本人使用，請勿轉傳。`;
+}
+async function renderLine() {
+  const el = $("#v-line");
+  if (!LINE_CENTER_URL) { el.innerHTML = `<div class="card"><h2>尚未設定推播中心</h2></div>`; return; }
+  if (!L.status) {
+    el.innerHTML = `<div class="card"><h2>LINE 推播</h2><div class="sub">讀取綁定狀態中…</div></div>`;
+    try { await loadLineStatus(false); } catch (e) { el.innerHTML = `<div class="card"><h2>連不上推播中心</h2><div class="err">${esc(e.message)}</div></div>`; return; }
+  }
+  const st = Object.fromEntries((L.status.people || []).map((x) => [x.id, x]));
+  const R = S.R, { m } = ymLabel();
+  const pushed = S.month.linePushed || {};
+  const rows = R.rows;
+  el.innerHTML = `
+  <div class="card"><h2>綁定狀態 <span class="pill ok">${rows.filter((r) => st[r.id]?.bound).length} / ${rows.length} 已綁定</span></h2>
+    <div class="sub">每人一組 6 位數綁定碼，私下交給本人；員工加好友後把碼傳到官方帳號就完成綁定。綁定碼用過即失效。</div>
+    <div class="scroll"><table><tr><th class="name">員工</th><th class="l">狀態</th><th>綁定碼</th><th class="l">操作</th></tr>
+    ${rows.map((r) => { const x = st[r.id] || {}; return `<tr><td class="name">${esc(r.name)}</td>
+      <td class="l">${x.bound ? `<span class="pill ok">已綁定</span> <span class="hint">${esc(x.displayName || "")}${x.boundAt ? "・" + new Date(x.boundAt).toLocaleDateString() : ""}</span>` : '<span class="pill no">未綁定</span>'}</td>
+      <td class="tnum"><b>${x.code || "—"}</b></td>
+      <td class="l">${x.bound ? `<button class="btn mini" data-unbind="${r.id}" type="button">解除綁定</button>` : `${x.code ? `<button class="btn mini" data-copy="${r.id}" type="button">複製邀請文字</button> ` : ""}<button class="btn mini" data-regen="${r.id}" type="button">${x.code ? "重新產生" : "產生綁定碼"}</button>`}</td></tr>`; }).join("")}
+    </table></div>
+    <div class="btnrow"><button class="btn" id="lnCodes" type="button">幫所有未綁定的人產生綁定碼</button><button class="btn" id="lnRefresh" type="button">重新整理</button><span class="hint">加好友連結：${esc(LINE_ADD_FRIEND_URL)}</span></div></div>
+
+  <div class="card"><h2>推播 ${m} 月薪資單</h2>
+    <div class="sub">只會傳給勾選且已綁定的人；每人只收到自己的卡片。手機通知只顯示「您的 ${m} 月薪資單已送達」，不顯示金額。</div>
+    ${R.checks.missingTotalVisits || R.checks.missingSessionVisits.length ? `<div class="warn">⚠ 本月資料還沒填完整（總人次或請假診人次），請先到「① 本月資料」補齊再推播。</div>` : ""}
+    <div class="scroll"><table><tr><th class="name"><input type="checkbox" id="lnAll" style="width:auto" checked></th><th class="l">員工</th><th>實領</th><th class="l">LINE</th><th class="l">本月推播</th></tr>
+    ${rows.map((r) => { const b = st[r.id]?.bound, res = (L.results || {})[r.id]; return `<tr><td class="name"><input type="checkbox" data-pick="${r.id}" style="width:auto" ${b && r.id !== "xu" && !pushed[r.id] ? "checked" : ""} ${b ? "" : "disabled"}></td><td class="l">${esc(r.name)}</td><td class="tnum">${fmt(r.net)}</td><td class="l">${b ? "已綁定" : '<span class="hint">未綁定</span>'}</td>
+      <td class="l">${res ? (res.ok ? '<span class="pill ok">剛剛送出 ✓</span>' : `<span class="pill no">失敗</span> <span class="hint">${esc(res.error || JSON.stringify(res.detail || res.status))}</span>`) : pushed[r.id] ? `<span class="hint">已於 ${new Date(pushed[r.id]).toLocaleString()} 送出</span>` : "—"}</td></tr>`; }).join("")}
+    </table></div>
+    <div class="btnrow"><button class="btn" id="lnCheck" type="button">檢查卡片格式</button><button class="btn primary" id="lnPush" type="button">推播給勾選的人</button><span class="hint" id="lnQuota"></span></div>
+    <div class="err" id="lnErr"></div></div>`;
+
+  const busy = (on) => { L.busy = on; $$("#v-line button").forEach((b) => (b.disabled = on)); };
+  const err = (m) => ($("#lnErr").textContent = m || "");
+  $("#lnRefresh").onclick = async () => { busy(true); try { await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); };
+  $("#lnCodes").onclick = async () => { busy(true); try { await loadLineStatus(true); toast("已產生綁定碼"); } catch (e) { toast(e.message); } busy(false); renderLine(); };
+  $$("[data-regen]").forEach((b) => (b.onclick = async () => { const p = people().find((x) => x.id === b.dataset.regen); busy(true); try { await lineApi("/api/regen", { system: LINE_SYSTEM, id: p.id, name: p.name }); await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); }));
+  $$("[data-unbind]").forEach((b) => (b.onclick = async () => { const p = people().find((x) => x.id === b.dataset.unbind); if (!confirm(`確定解除 ${p.name} 的 LINE 綁定？之後要重新給他綁定碼。`)) return; busy(true); try { await lineApi("/api/unbind", { system: LINE_SYSTEM, id: p.id }); await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); }));
+  $$("[data-copy]").forEach((b) => (b.onclick = async () => { const p = people().find((x) => x.id === b.dataset.copy); const t = inviteText(p, st[p.id].code); try { await navigator.clipboard.writeText(t); toast("已複製，貼到 LINE 私訊給本人"); } catch (e) { prompt("複製下面文字：", t); } }));
+  $("#lnAll").onchange = (e) => $$("[data-pick]:not([disabled])").forEach((c) => (c.checked = e.target.checked));
+  const picked = () => $$("[data-pick]:checked").map((c) => rows.find((r) => r.id === c.dataset.pick));
+  $("#lnCheck").onclick = async () => { err(""); const list = picked().length ? picked() : rows; busy(true);
+    try { const j = await lineApi("/api/validate", { messages: list.slice(0, 5).map(flexFor) }); toast(j.ok ? "卡片格式正確 ✓" : "格式有問題"); if (!j.ok) err(JSON.stringify(j.detail)); } catch (e) { err(e.message); } busy(false); };
+  $("#lnPush").onclick = async () => { err(""); const list = picked(); if (!list.length) { toast("沒有勾選任何人"); return; }
+    const again = list.filter((r) => pushed[r.id]);
+    if (!confirm(`要把 ${m} 月薪資單推播給 ${list.length} 人？\n${list.map((r) => r.name).join("、")}${again.length ? `\n\n⚠ 其中 ${again.map((r) => r.name).join("、")} 本月已經送過，會再收到一次。` : ""}`)) return;
+    busy(true);
+    try {
+      const j = await lineApi("/api/push", { system: LINE_SYSTEM, items: list.map((r) => ({ id: r.id, messages: [flexFor(r)], retryKey: crypto.randomUUID() })) });
+      L.results = Object.fromEntries(j.results.map((x) => [x.id, x]));
+      const now = new Date().toISOString(); S.month.linePushed = { ...(S.month.linePushed || {}) };
+      j.results.filter((x) => x.ok).forEach((x) => (S.month.linePushed[x.id] = now)); saveMonth();
+      const okN = j.results.filter((x) => x.ok).length; toast(`送出 ${okN} / ${list.length}`);
+    } catch (e) { err(e.message); }
+    busy(false); renderLine();
+  };
+  lineApi("/api/quota", {}).then((q) => { const used = q.used?.totalUsage, lim = q.quota?.type === "limited" ? q.quota.value : null; if (used != null) $("#lnQuota").textContent = `本月已用 ${used}${lim ? " / " + lim : ""} 則`; }).catch(() => {});
+}
+
+/* ⑥ 參數 */
 async function saveParams(p) { await F.setDoc(F.doc(db, "admin", "params"), p); S.params = p; toast("參數已儲存"); }
 function renderParams() {
   const el = $("#v-params"), P = S.params;
