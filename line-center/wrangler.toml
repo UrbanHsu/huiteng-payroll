@@ -7,7 +7,7 @@ workers_dev = true
 
 [vars]
 # 允許呼叫管理 API 的 Firebase 專案（逗號分隔；牙科系統上線後加進來）
-ALLOWED_PROJECTS = "huiteng-payroll-ddef6"
+ALLOWED_PROJECTS = "huiteng-payroll-ddef6,yun-salary"
 # 管理者帳號（逗號分隔）
 ADMIN_EMAILS = "ilms.always03@gmail.com"
 # 允許的網頁來源（CORS）
