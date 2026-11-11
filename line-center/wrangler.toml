@@ -1,0 +1,19 @@
+# 惠惠聯合診所 LINE 推播中心（Cloudflare Worker）
+# 由 GitHub Actions 自動部署（.github/workflows/deploy-line-center.yml）
+name = "hh-line-center"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+
+[vars]
+# 允許呼叫管理 API 的 Firebase 專案（逗號分隔；牙科系統上線後加進來）
+ALLOWED_PROJECTS = "huiteng-payroll-ddef6"
+# 管理者帳號（逗號分隔）
+ADMIN_EMAILS = "ilms.always03@gmail.com"
+# 允許的網頁來源（CORS）
+ALLOWED_ORIGINS = "https://urbanhsu.github.io"
+
+# KV 由部署流程自動建立並填入 id
+[[kv_namespaces]]
+binding = "KV"
+id = "__KV_ID__"

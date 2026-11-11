@@ -1,0 +1,71 @@
+name: 部署 LINE 推播中心
+
+on:
+  push:
+    branches: [main]
+    paths: ["line-center/**", ".github/workflows/deploy-line-center.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: line-center
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 準備 KV 儲存空間與 workers.dev 網址
+        working-directory: line-center
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT"
+          H=(-H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json")
+          TITLE="hh-line-center-kv"
+          ID=$(curl -fsS "${H[@]}" "$API/storage/kv/namespaces?per_page=100" | jq -r --arg t "$TITLE" '.result[] | select(.title==$t) | .id' | head -n1)
+          if [ -z "$ID" ]; then
+            ID=$(curl -fsS "${H[@]}" -X POST "$API/storage/kv/namespaces" -d "{\"title\":\"$TITLE\"}" | jq -r '.result.id')
+            echo "建立 KV：$ID"
+          fi
+          sed -i "s/__KV_ID__/$ID/" wrangler.toml
+          SUB=$(curl -sS "${H[@]}" "$API/workers/subdomain" | jq -r '.result.subdomain // empty')
+          if [ -z "$SUB" ]; then
+            for s in huihui-clinic huihui-clinic-$RANDOM; do
+              SUB=$(curl -sS "${H[@]}" -X PUT "$API/workers/subdomain" -d "{\"subdomain\":\"$s\"}" | jq -r '.result.subdomain // empty')
+              [ -n "$SUB" ] && break
+            done
+          fi
+          echo "SUBDOMAIN=$SUB" >> "$GITHUB_ENV"
+
+      - name: 部署
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: line-center
+          command: deploy
+          secrets: |
+            LINE_CHANNEL_SECRET
+            LINE_CHANNEL_ACCESS_TOKEN
+        env:
+          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+
+      - name: 顯示推播中心網址
+        run: |
+          URL="https://hh-line-center.$SUBDOMAIN.workers.dev"
+          echo "推播中心：$URL"
+          echo "LINE Webhook 網址：$URL/webhook"
+          {
+            echo "### LINE 推播中心已部署"
+            echo ""
+            echo "- 推播中心網址：\`$URL\`"
+            echo "- LINE Webhook 網址：\`$URL/webhook\`"
+          } >> "$GITHUB_STEP_SUMMARY"
