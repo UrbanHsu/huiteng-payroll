@@ -191,6 +191,11 @@ tr.self td,tr.self td.name{background:var(--self);color:var(--muted)}
 .install>summary::after{content:"看怎麼做 ›";margin-left:auto;white-space:nowrap;font-size:12.5px;color:var(--accent);font-weight:700}
 .install[open]>summary::after{content:"收起 ⌃"}
 .install[open]{padding:0 18px 18px}.install[open]>summary{padding-inline:0}
+.ig-h{font-size:12.5px;font-weight:700;color:var(--accent);letter-spacing:.1em;margin:14px 0 8px}
+.ig-row{display:flex;flex-wrap:wrap;gap:12px}
+.ig-card{flex:1 1 220px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.ig-t{font-weight:700;margin-bottom:6px}
+.ig-card ol{margin:0;padding-left:20px;line-height:1.85;font-size:13.5px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -214,25 +219,18 @@ tr.self td,tr.self td.name{background:var(--self);color:var(--muted)}
   <div id="formArea" style="display:flex;flex-direction:column;gap:16px"></div>
 
   <details class="card install" id="installGuide">
-    <summary>📲 想把填單頁加到手機桌面嗎？</summary>
+    <summary>📲 想把這個填單系統加到桌面嗎？</summary>
     <div class="sub" style="margin-top:12px">加一次之後，每個月直接點桌面上的「惠騰月報表」圖示就能開，不用再找連結。</div>
-    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:4px">
-      <div style="flex:1 1 240px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
-        <div style="font-weight:700;margin-bottom:8px"> iPhone（請用 Safari 開啟）</div>
-        <ol style="margin:0;padding-left:20px;line-height:1.95;font-size:13.5px">
-          <li>點畫面<b>最下方中間的「分享」鈕</b>（方框加向上箭頭）</li>
-          <li>往下滑，選<b>「加入主畫面」</b></li>
-          <li>按右上角<b>「加入」</b></li>
-        </ol>
-      </div>
-      <div style="flex:1 1 240px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
-        <div style="font-weight:700;margin-bottom:8px"> Android（請用 Chrome 開啟）</div>
-        <ol style="margin:0;padding-left:20px;line-height:1.95;font-size:13.5px">
-          <li>點右上角<b>「⋮」選單</b></li>
-          <li>選<b>「加到主畫面」</b>或「安裝應用程式」</li>
-          <li>按<b>「新增」/「安裝」</b></li>
-        </ol>
-      </div>
+    <div class="ig-h">手機</div>
+    <div class="ig-row">
+      <div class="ig-card"><div class="ig-t">iPhone（請用 Safari 開啟）</div><ol><li>點畫面<b>最下方中間的「分享」鈕</b>（方框加向上箭頭）</li><li>往下滑，選<b>「加入主畫面」</b></li><li>按右上角<b>「加入」</b></li></ol></div>
+      <div class="ig-card"><div class="ig-t">Android（請用 Chrome 開啟）</div><ol><li>點右上角<b>「⋮」選單</b></li><li>選<b>「加到主畫面」</b>或「安裝應用程式」</li><li>按<b>「新增」/「安裝」</b></li></ol></div>
+    </div>
+    <div class="ig-h">電腦</div>
+    <div class="ig-row">
+      <div class="ig-card"><div class="ig-t">Chrome（Windows／Mac）</div><ol><li>點右上角<b>「⋮」選單</b></li><li>選<b>「投放、儲存及分享」</b>→<b>「安裝頁面為應用程式」</b>（或「建立捷徑」，並勾選「以視窗開啟」）</li><li>按<b>「安裝」</b>，桌面和開始選單就會出現圖示</li></ol></div>
+      <div class="ig-card"><div class="ig-t">Edge（Windows）</div><ol><li>點右上角<b>「⋯」選單</b></li><li>選<b>「應用程式」</b>→<b>「將此網站安裝為應用程式」</b></li><li>按<b>「安裝」</b>，可再選擇釘選到工作列或桌面</li></ol></div>
+      <div class="ig-card"><div class="ig-t">Safari（Mac）</div><ol><li>點上方選單列的<b>「檔案」</b></li><li>選<b>「加入 Dock」</b></li><li>按<b>「加入」</b>，Dock 就會出現圖示</li></ol></div>
     </div>
     <div class="hint" style="margin-top:12px">桌面會出現惠騰血滴寶寶的圖示（名字是「惠騰月報表」），之後每個月點它就能直接填表。</div>
   </details>
