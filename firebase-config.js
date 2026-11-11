@@ -6,12 +6,12 @@
  * 真正保護資料的是 firestore.rules。
  */
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
+  apiKey: "AIzaSyDmc3iyFDz92jbyKiNDZKkjoYP-LtTxmlQ",
+  authDomain: "huiteng-payroll-ddef6.firebaseapp.com",
+  projectId: "huiteng-payroll-ddef6",
+  storageBucket: "huiteng-payroll-ddef6.firebasestorage.app",
+  messagingSenderId: "376984928012",
+  appId: "1:376984928012:web:75e88048fa249de7409329",
 };
 
 /** 員工登入帳號的網域：員工帳號是 <代號>@staff.huiteng-payroll.app（不會真的寄信） */
