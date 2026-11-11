@@ -221,7 +221,22 @@ async function api(req, env, url) {
           const r = await lineFetch(env, "/message/push", { to: bind.userId, messages: it.messages }, { "X-Line-Retry-Key": it.retryKey || crypto.randomUUID() });
           results.push({ id: it.id, ok: r.ok || r.status === 409, status: r.status, detail: r.ok ? null : r.detail });
         }
-        return json({ results }, 200, h);
+        // 推播結果通知給管理者（system "_admin" 底下已綁定的人）
+        let notified = 0;
+        if (typeof b.notify === "string" && b.notify.trim()) {
+          let cursor;
+          do {
+            const page = await env.KV.list({ prefix: "bind:_admin:", cursor });
+            for (const k of page.keys) {
+              const w = await getJ(env, k.name);
+              if (!w) continue;
+              const r = await lineFetch(env, "/message/push", { to: w.userId, messages: [{ type: "text", text: b.notify.slice(0, 4900) }] });
+              if (r.ok) notified++;
+            }
+            cursor = page.list_complete ? null : page.cursor;
+          } while (cursor);
+        }
+        return json({ results, notified }, 200, h);
       }
 
       case "/api/quota": {

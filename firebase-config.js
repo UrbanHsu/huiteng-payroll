@@ -26,3 +26,5 @@ export const LINE_SYSTEM = "huiteng";
 export const CLINIC_NAME = "惠騰內科診所";
 /** 員工加好友連結 */
 export const LINE_ADD_FRIEND_URL = "https://lin.ee/nmhN9bY";
+/** 收「推播結果通知」的管理者（在推播中心以 _admin 綁定） */
+export const LINE_WATCHERS = [{ id: "shuyun", name: "劉淑韻" }, { id: "xu", name: "徐盛邦" }];

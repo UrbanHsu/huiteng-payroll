@@ -157,7 +157,7 @@ details .in-body{padding:10px}
 
 <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
 <script type="module">
-import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL } from "./firebase-config.js";
+import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS = [] } from "./firebase-config.js";
 import { slipFlexMessage } from "./line-flex.js";
 import { computePayroll, absentSessions } from "./engine.js";
 
@@ -448,7 +448,11 @@ function flexFor(r) {
   return slipFlexMessage(r, { clinic: CLINIC_NAME, year: +y, month: m, footer: ty + "薪資屬個人資料，請勿外流或探詢他人薪資。如有疑問請直接洽徐院長。" });
 }
 async function loadLineStatus(ensureCodes) {
-  L.status = await lineApi("/api/status", { system: LINE_SYSTEM, people: people().map((p) => ({ id: p.id, name: p.name })), ensureCodes });
+  const [a, w] = await Promise.all([
+    lineApi("/api/status", { system: LINE_SYSTEM, people: people().map((p) => ({ id: p.id, name: p.name })), ensureCodes }),
+    LINE_WATCHERS.length ? lineApi("/api/status", { system: "_admin", people: LINE_WATCHERS, ensureCodes }) : { people: [] },
+  ]);
+  L.status = a; L.watch = w;
 }
 function inviteText(p, code) {
   return `${p.name} 您好，薪資單之後會改用 LINE 傳送給您本人。\n\n1. 加入官方帳號：${LINE_ADD_FRIEND_URL}\n2. 在對話裡傳送您的綁定碼：${code}\n\n看到「綁定完成」就可以了。綁定碼只給您本人使用，請勿轉傳。`;
@@ -475,6 +479,12 @@ async function renderLine() {
     </table></div>
     <div class="btnrow"><button class="btn" id="lnCodes" type="button">幫所有未綁定的人產生綁定碼</button><button class="btn" id="lnRefresh" type="button">重新整理</button><span class="hint">加好友連結：${esc(LINE_ADD_FRIEND_URL)}</span></div></div>
 
+  <div class="card"><h2>管理者通知</h2><div class="sub">綁定後，每次推播完會收到一則「推播結果」（誰送達、誰失敗），不會收到別人的薪資單。</div>
+    <div class="scroll"><table><tr><th class="name">管理者</th><th class="l">狀態</th><th>綁定碼</th><th class="l">操作</th></tr>
+    ${LINE_WATCHERS.map((w) => { const x = Object.fromEntries((L.watch?.people || []).map((y) => [y.id, y]))[w.id] || {}; return `<tr><td class="name">${esc(w.name)}</td><td class="l">${x.bound ? `<span class="pill ok">已綁定</span> <span class="hint">${esc(x.displayName || "")}</span>` : '<span class="pill no">未綁定</span>'}</td><td class="tnum"><b>${x.code || "—"}</b></td>
+      <td class="l">${x.bound ? `<button class="btn mini" data-wunbind="${w.id}" type="button">解除綁定</button>` : `<button class="btn mini" data-wregen="${w.id}" type="button">${x.code ? "重新產生" : "產生綁定碼"}</button>`}</td></tr>`; }).join("")}
+    </table></div></div>
+
   <div class="card"><h2>推播 ${m} 月薪資單</h2>
     <div class="sub">只會傳給勾選且已綁定的人；每人只收到自己的卡片。手機通知只顯示「您的 ${m} 月薪資單已送達」，不顯示金額。</div>
     ${R.checks.missingTotalVisits || R.checks.missingSessionVisits.length ? `<div class="warn">⚠ 本月資料還沒填完整（總人次或請假診人次），請先到「① 本月資料」補齊再推播。</div>` : ""}
@@ -492,6 +502,8 @@ async function renderLine() {
   $$("[data-regen]").forEach((b) => (b.onclick = async () => { const p = people().find((x) => x.id === b.dataset.regen); busy(true); try { await lineApi("/api/regen", { system: LINE_SYSTEM, id: p.id, name: p.name }); await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); }));
   $$("[data-unbind]").forEach((b) => (b.onclick = async () => { const p = people().find((x) => x.id === b.dataset.unbind); if (!confirm(`確定解除 ${p.name} 的 LINE 綁定？之後要重新給他綁定碼。`)) return; busy(true); try { await lineApi("/api/unbind", { system: LINE_SYSTEM, id: p.id }); await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); }));
   $$("[data-copy]").forEach((b) => (b.onclick = async () => { const p = people().find((x) => x.id === b.dataset.copy); const t = inviteText(p, st[p.id].code); try { await navigator.clipboard.writeText(t); toast("已複製，貼到 LINE 私訊給本人"); } catch (e) { prompt("複製下面文字：", t); } }));
+  $$("[data-wregen]").forEach((b) => (b.onclick = async () => { const w = LINE_WATCHERS.find((x) => x.id === b.dataset.wregen); busy(true); try { await lineApi("/api/regen", { system: "_admin", id: w.id, name: w.name + "（管理者）" }); await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); }));
+  $$("[data-wunbind]").forEach((b) => (b.onclick = async () => { if (!confirm("確定解除這位管理者的通知綁定？")) return; busy(true); try { await lineApi("/api/unbind", { system: "_admin", id: b.dataset.wunbind }); await loadLineStatus(false); } catch (e) { toast(e.message); } busy(false); renderLine(); }));
   $("#lnAll").onchange = (e) => $$("[data-pick]:not([disabled])").forEach((c) => (c.checked = e.target.checked));
   const picked = () => $$("[data-pick]:checked").map((c) => rows.find((r) => r.id === c.dataset.pick));
   $("#lnCheck").onclick = async () => { err(""); const list = picked().length ? picked() : rows; busy(true);
@@ -501,11 +513,18 @@ async function renderLine() {
     if (!confirm(`要把 ${m} 月薪資單推播給 ${list.length} 人？\n${list.map((r) => r.name).join("、")}${again.length ? `\n\n⚠ 其中 ${again.map((r) => r.name).join("、")} 本月已經送過，會再收到一次。` : ""}`)) return;
     busy(true);
     try {
-      const j = await lineApi("/api/push", { system: LINE_SYSTEM, items: list.map((r) => ({ id: r.id, messages: [flexFor(r)], retryKey: crypto.randomUUID() })) });
-      L.results = Object.fromEntries(j.results.map((x) => [x.id, x]));
+      const bound = Object.fromEntries((L.status.people || []).map((x) => [x.id, x.bound]));
+      const items = list.map((r) => ({ id: r.id, messages: [flexFor(r)], retryKey: crypto.randomUUID() }));
+      const j = await lineApi("/api/push", { system: LINE_SYSTEM, items });
+      const res = Object.fromEntries(j.results.map((x) => [x.id, x]));
+      const okN = j.results.filter((x) => x.ok).length;
+      const lines = list.map((r) => (res[r.id]?.ok ? "✓ " : "✗ ") + r.name + (res[r.id]?.ok ? "" : res[r.id]?.error === "not_bound" ? "（未綁定）" : "（失敗）"));
+      const notRecv = rows.filter((r) => !list.includes(r) && r.id !== "xu").map((r) => "－ " + r.name + (bound[r.id] ? "（本次未勾選）" : "（未綁定）"));
+      lineApi("/api/push", { system: LINE_SYSTEM, items: [], notify: `${CLINIC_NAME} ${m} 月薪資單推播結果（${okN}/${list.length} 送達）\n${[...lines, ...notRecv].join("\n")}` }).catch(() => {});
+      L.results = res;
       const now = new Date().toISOString(); S.month.linePushed = { ...(S.month.linePushed || {}) };
       j.results.filter((x) => x.ok).forEach((x) => (S.month.linePushed[x.id] = now)); saveMonth();
-      const okN = j.results.filter((x) => x.ok).length; toast(`送出 ${okN} / ${list.length}`);
+      toast(`送出 ${okN} / ${list.length}`);
     } catch (e) { err(e.message); }
     busy(false); renderLine();
   };
