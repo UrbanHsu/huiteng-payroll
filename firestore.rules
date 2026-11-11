@@ -1,14 +1,14 @@
 rules_version = '2';
 // 惠騰薪資系統 Firestore 安全規則
 // 部署：Firebase 主控台 → Firestore Database → 規則 → 貼上 → 發布
-// ⚠ 先把下面 ADMIN_EMAILS 改成管理者的登入 Email
+// 管理者帳號列在 isAdmin() 裡，要增加管理者就在清單裡加 Email
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
     function isAdmin() {
       return signedIn() && request.auth.token.email in [
-        "ADMIN_EMAIL_HERE"
+        "ilms.always03@gmail.com"
       ];
     }
     function isStaff() {
