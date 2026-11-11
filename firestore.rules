@@ -1,0 +1,61 @@
+rules_version = '2';
+// 惠騰薪資系統 Firestore 安全規則
+// 部署：Firebase 主控台 → Firestore Database → 規則 → 貼上 → 發布
+// ⚠ 先把下面 ADMIN_EMAILS 改成管理者的登入 Email
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email in [
+        "ADMIN_EMAIL_HERE"
+      ];
+    }
+    function isStaff() {
+      return signedIn() && request.auth.token.email.matches('^[a-z]+@staff[.]huiteng-payroll[.]app$');
+    }
+    function staffId() { return request.auth.token.email.split('@')[0]; }
+
+    // 員工本人的月報：subs/{YYYYMM}_{id}
+    match /subs/{docId} {
+      allow read, write: if isAdmin()
+        || (isStaff() && docId.matches('^[0-9]{6}_' + staffId() + '$'));
+    }
+    // 主管代填（核對用）：proxy/{YYYYMM}_{target}_{by}
+    match /proxy/{docId} {
+      allow read, write: if isAdmin()
+        || (isStaff() && docId.matches('^[0-9]{6}_[a-z]+_' + staffId() + '$'));
+    }
+    // 填寫進度：所有人可看（只有誰已送出），員工只能把自己標成已送出
+    match /status/{month} {
+      allow read: if true;
+      allow create: if isAdmin() || (isStaff() && request.resource.data.submitted.keys().hasOnly([staffId()]));
+      allow update: if isAdmin() || (isStaff()
+        && request.resource.data.submitted.diff(resource.data.submitted).affectedKeys().hasOnly([staffId()]));
+      allow delete: if isAdmin();
+    }
+    // 誰已設定過密碼：所有人可看，員工只能加自己
+    match /meta/registry {
+      allow read: if true;
+      allow create, update: if isAdmin() || (isStaff()
+        && request.resource.data.diff(resource == null ? {} : resource.data).affectedKeys().hasOnly([staffId()]));
+      allow delete: if isAdmin();
+    }
+    // 填單頁問候語與截止日：所有人可看，只有管理者可改
+    match /meta/settings {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // 員工 Email（寄薪資單用）
+    match /profiles/{id} {
+      allow read, write: if isAdmin() || (isStaff() && id == staffId());
+    }
+    // 管理者專用：人員與規則參數、每月輸入、結果存檔
+    match /admin/{doc=**}   { allow read, write: if isAdmin(); }
+    match /months/{doc=**}  { allow read, write: if isAdmin(); }
+    match /results/{doc=**} { allow read, write: if isAdmin(); }
+
+    // 其他一律拒絕
+    match /{document=**} { allow read, write: if false; }
+  }
+}

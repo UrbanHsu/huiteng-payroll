@@ -1,0 +1,8 @@
+# 含真實薪資資料的檔案一律不進 repo（repo 是公開的）
+private/
+*.private.json
+params*.json
+*驗證資料*.json
+tests/*.json
+.DS_Store
+node_modules/

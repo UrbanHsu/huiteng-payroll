@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>惠騰薪資後台</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="theme-color" content="#0f7b7b">
+<style>
+:root{
+  --bg:#f4f6f7;--surface:#fff;--surface-2:#eef1f3;--line:#dde3e7;--fg:#1b2529;--muted:#5f6f78;
+  --accent:#0f7b7b;--accent-fg:#fff;--warn:#b4690e;--good:#2f7d46;--danger:#b23b3b;--cell:#fff8e6;
+  --shadow:0 1px 2px rgba(16,40,48,.06),0 2px 8px rgba(16,40,48,.05);
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1618;--surface:#172124;--surface-2:#1d292d;--line:#2a393e;--fg:#e7eef0;--muted:#95a7ae;
+  --accent:#2bb3ac;--accent-fg:#06211f;--warn:#e0a048;--good:#5fc27e;--danger:#e07a7a;--cell:#2a2415;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1618;--surface:#172124;--surface-2:#1d292d;--line:#2a393e;--fg:#e7eef0;--muted:#95a7ae;
+  --accent:#2bb3ac;--accent-fg:#06211f;--warn:#e0a048;--good:#5fc27e;--danger:#e07a7a;--cell:#2a2415;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%}
+h1,h2,h3{margin:0}
+button,input,select,textarea{font-family:inherit;font-size:14px}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.tnum{font-variant-numeric:tabular-nums}
+.bar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+.bar-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700}
+.brand{font-weight:700;font-size:16px}.brand small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.sp{flex:1}
+.tabs{max-width:1100px;margin:0 auto;display:flex;gap:2px;padding:0 10px;overflow-x:auto}
+.tab{border:0;background:none;color:var(--muted);padding:11px 13px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px}
+.card h2{font-size:16px;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0;flex:0 1 170px}
+.field label{font-size:12px;color:var(--muted);font-weight:600}
+input,select,textarea{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
+input.in{background:var(--cell);width:84px;text-align:center;padding:6px}
+input.in.wide{width:140px;text-align:left}
+textarea.json{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;min-height:420px;line-height:1.45}
+.btn{border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:9px;padding:8px 14px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+.btn.mini{padding:4px 10px;font-size:12px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.hint{font-size:12px;color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.pill.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.pill.no{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.warn{background:color-mix(in srgb,var(--warn) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px}
+.err{color:var(--danger);font-size:13px;margin-top:8px;min-height:18px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:var(--surface-2);color:var(--muted);font-weight:700}
+th.l,td.l{text-align:left}
+td.name,th.name{position:sticky;left:0;background:var(--surface);text-align:left;font-weight:600;z-index:1}
+th.name{background:var(--surface-2)}
+tr.total td{font-weight:800;border-top:2px solid var(--line)}
+.diff{color:var(--danger);font-size:11px;display:block}
+.neg{color:var(--danger)}
+details{border:1px solid var(--line);border-radius:10px;margin-top:10px}
+details>summary{padding:9px 12px;font-weight:700;cursor:pointer;background:var(--surface-2);border-radius:10px}
+details .in-body{padding:10px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 18px;border-radius:999px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+/* ---- 薪資單／看板（輸出成圖片用，固定淺色） ---- */
+.slips{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.slip-wrap{display:flex;flex-direction:column;gap:8px;align-items:center}
+.pic{width:420px;padding:20px;background:#eef2f1;color:#1f2a2a;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+.pic .cardx{background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.pic .hd{background:#1f6f6b;color:#fff;padding:22px 24px 20px}
+.pic .clinic{font-size:13px;letter-spacing:.12em;opacity:.85}
+.pic .title{font-size:22px;font-weight:700;margin-top:4px}
+.pic .meta{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px}
+.pic .nm{font-size:26px;font-weight:700;letter-spacing:.06em}
+.pic .period{font-size:12.5px;opacity:.9;text-align:right;line-height:1.5}
+.pic .net{padding:20px 24px 18px;border-bottom:1px solid #e6ecea}
+.pic .net .l{font-size:13px;color:#5c6b69}
+.pic .net .v{font-size:38px;font-weight:700;color:#1f6f6b;margin-top:2px}
+.pic .net .v small{font-size:18px;font-weight:500;margin-right:4px;color:#5c6b69}
+.pic .net .cash{font-size:12.5px;color:#5c6b69;margin-top:4px}
+.pic .sec{padding:16px 24px 6px}
+.pic .sec h3{font-size:13px;font-weight:700;color:#1f6f6b;letter-spacing:.1em;margin-bottom:6px}
+.pic .r{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed #e3e8e7;font-size:15px}
+.pic .r:last-child{border-bottom:none}
+.pic .r i{font-style:normal;font-size:12px;color:#8a9795;margin-left:6px}
+.pic .r .n{font-variant-numeric:tabular-nums;font-weight:500}
+.pic .r.m .n{color:#b5483b}
+.pic .subt{display:flex;justify-content:space-between;padding:10px 24px;background:#f5f8f7;font-size:14px;font-weight:700}
+.pic .subt.m span:last-child{color:#b5483b}
+.pic .ft{padding:16px 24px 20px;font-size:11.5px;color:#8a9795;line-height:1.7}
+.pic .it{padding:8px 0 10px}
+.pic .it .top{display:flex;justify-content:space-between;align-items:baseline;font-size:15px}
+.pic .it .top i{font-style:normal;font-size:12.5px;color:#8a9795;margin-left:8px}
+.pic .bar2{height:8px;background:#eef3f2;border-radius:4px;margin-top:6px;overflow:hidden}
+.pic .bar2 div{height:100%;background:#3a948e;border-radius:4px}
+.pic .thanks{padding:14px 24px 22px;font-size:13px;color:#4a5856;line-height:1.75;border-top:1px solid #e6ecea}
+.pic .thanks small{display:block;font-size:11.5px;color:#8a9795;margin-top:6px}
+@media(max-width:480px){.pic{width:100%;padding:10px}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="bar-in">
+    <div class="logo">惠</div>
+    <div class="brand">惠騰薪資後台 <small>管理者專用</small></div>
+    <div class="sp"></div>
+    <span id="whoAmI" class="hint"></span>
+    <input id="monthInput" type="month" style="width:150px" aria-label="薪資月份">
+    <button class="btn mini" id="themeBtn" type="button">深色</button>
+    <button class="btn mini" id="logoutBtn" type="button" hidden>登出</button>
+  </div>
+  <div class="tabs" role="tablist" id="tabs" hidden>
+    <button class="tab" data-v="data" aria-selected="true">① 本月資料</button>
+    <button class="tab" data-v="table" aria-selected="false">② 薪資表</button>
+    <button class="tab" data-v="slips" aria-selected="false">③ 薪資單</button>
+    <button class="tab" data-v="board" aria-selected="false">④ 團隊看板</button>
+    <button class="tab" data-v="params" aria-selected="false">⑤ 參數</button>
+  </div>
+</div>
+
+<main class="wrap">
+  <section class="card" id="configWarn" hidden>
+    <h2>尚未設定 Firebase</h2>
+    <div class="sub">請先把新 Firebase 專案的設定貼到 <code>firebase-config.js</code>，再重新整理這一頁。</div>
+  </section>
+
+  <section class="card" id="loginCard" hidden>
+    <h2>管理者登入</h2>
+    <div class="sub">使用 Firebase 裡建立的管理者帳號登入（帳號需列在 firestore.rules 的管理者名單中）。</div>
+    <div class="row">
+      <div class="field" style="flex-basis:240px"><label for="em">Email</label><input id="em" type="email" autocomplete="username"></div>
+      <div class="field" style="flex-basis:200px"><label for="pw">密碼</label><input id="pw" type="password" autocomplete="current-password"></div>
+      <button class="btn primary" id="loginBtn" type="button">登入</button>
+    </div>
+    <div class="err" id="loginErr"></div>
+  </section>
+
+  <div id="views" hidden>
+    <section id="v-data"></section>
+    <section id="v-table" hidden></section>
+    <section id="v-slips" hidden></section>
+    <section id="v-board" hidden></section>
+    <section id="v-params" hidden></section>
+  </div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script type="module">
+import { firebaseConfig, STAFF_DOMAIN, isConfigured } from "./firebase-config.js";
+import { computePayroll, absentSessions } from "./engine.js";
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (n) => (n < 0 ? "−" + Math.abs(n).toLocaleString() : n.toLocaleString());
+const fmt2 = (n) => (+n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (v) => (v === "" || v == null || isNaN(+v) ? null : +v);
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 1800); }
+
+/* theme */
+(() => { const b = $("#themeBtn"); const set = (n) => { document.documentElement.dataset.theme = n; b.textContent = n === "dark" ? "淺色" : "深色"; };
+  try { const s = localStorage.getItem("ht_admin_theme"); if (s) set(s); } catch (e) {}
+  b.onclick = () => { const n = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; set(n); try { localStorage.setItem("ht_admin_theme", n); } catch (e) {} }; })();
+
+/* month: default = previous month */
+const prevMonth = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+$("#monthInput").value = prevMonth();
+const ym = () => $("#monthInput").value.replace("-", "");
+const ymLabel = () => { const s = ym(); return { y: s.slice(0, 4), m: +s.slice(4, 6) }; };
+
+if (!isConfigured()) { $("#configWarn").hidden = false; throw new Error("firebase-config.js 尚未設定"); }
+
+const V = "10.12.2";
+const { initializeApp } = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
+const A = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`);
+const F = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
+const app = initializeApp(firebaseConfig);
+const auth = A.getAuth(app), db = F.getFirestore(app);
+
+const S = { params: null, month: {}, subs: {}, proxy: {}, status: {}, R: null, view: "data" };
+
+/* ---------- auth ---------- */
+A.onAuthStateChanged(auth, async (u) => {
+  if (!u) { $("#loginCard").hidden = false; $("#views").hidden = $("#tabs").hidden = $("#logoutBtn").hidden = true; $("#whoAmI").textContent = ""; return; }
+  if (u.email && u.email.endsWith(STAFF_DOMAIN)) { await A.signOut(auth); $("#loginErr").textContent = "員工帳號不能登入後台。"; return; }
+  $("#whoAmI").textContent = u.email || "";
+  $("#loginCard").hidden = true; $("#views").hidden = $("#tabs").hidden = $("#logoutBtn").hidden = false;
+  await loadAll();
+});
+const doLogin = async () => {
+  $("#loginErr").textContent = "";
+  try { await A.signInWithEmailAndPassword(auth, $("#em").value.trim(), $("#pw").value); }
+  catch (e) { $("#loginErr").textContent = e.code === "auth/too-many-requests" ? "嘗試太多次，請稍後再試。" : "帳號或密碼不正確。"; }
+};
+$("#loginBtn").onclick = doLogin;
+$("#pw").onkeydown = (e) => { if (e.key === "Enter") doLogin(); };
+$("#logoutBtn").onclick = () => A.signOut(auth);
+
+/* ---------- data ---------- */
+async function loadAll() {
+  try {
+    const p = await F.getDoc(F.doc(db, "admin", "params"));
+    S.params = p.exists() ? p.data() : null;
+  } catch (e) {
+    $("#v-data").innerHTML = `<div class="card"><h2>沒有管理者權限</h2><div class="sub">這個帳號不在 firestore.rules 的管理者名單中。</div></div>`;
+    showView("data"); return;
+  }
+  const m = ym();
+  const [mo, st, subs, prox] = await Promise.all([
+    F.getDoc(F.doc(db, "months", m)),
+    F.getDoc(F.doc(db, "status", m)),
+    F.getDocs(F.query(F.collection(db, "subs"), F.where("month", "==", m))),
+    F.getDocs(F.query(F.collection(db, "proxy"), F.where("month", "==", m))),
+  ]);
+  S.month = mo.exists() ? mo.data() : {};
+  S.status = (st.exists() && st.data().submitted) || {};
+  S.subs = {}; subs.forEach((d) => { const x = d.data(); if (x.person) S.subs[x.person] = x; });
+  S.proxy = {}; prox.forEach((d) => { const x = d.data(); if (x.target) S.proxy[x.target] = x; });
+  recompute();
+}
+$("#monthInput").onchange = () => { if (auth.currentUser) loadAll(); };
+
+let saveT;
+function saveMonth() {
+  clearTimeout(saveT);
+  saveT = setTimeout(async () => {
+    try { await F.setDoc(F.doc(db, "months", ym()), { ...S.month, updatedAt: F.serverTimestamp() }); toast("已儲存"); }
+    catch (e) { console.error(e); toast("儲存失敗"); }
+  }, 500);
+}
+function recompute() {
+  S.R = S.params ? computePayroll(S.params, S.month, S.subs) : null;
+  render();
+}
+
+/* ---------- views ---------- */
+$$(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.v)));
+function showView(v) {
+  S.view = v;
+  $$(".tab").forEach((t) => t.setAttribute("aria-selected", t.dataset.v === v));
+  ["data", "table", "slips", "board", "params"].forEach((k) => ($("#v-" + k).hidden = k !== v));
+  render();
+}
+function render() {
+  if (!S.params && S.view !== "params") {
+    $("#v-" + S.view).innerHTML = `<div class="card"><h2>還沒有人員與規則參數</h2><div class="sub">請到「⑤ 參數」匯入參數檔（JSON）後才能計算。</div><button class="btn primary" type="button" id="goParams">前往參數</button></div>`;
+    $("#goParams").onclick = () => showView("params"); return;
+  }
+  ({ data: renderData, table: renderTable, slips: renderSlips, board: renderBoard, params: renderParams })[S.view]();
+}
+const people = () => S.params.people;
+const pool = () => S.params.people.filter((p) => p.inPool);
+const nameOf = (id) => (S.params.people.find((p) => p.id === id) || {}).name || id;
+
+/* ① 本月資料 */
+const ATT = [["ot", "加班(分)"], ["late", "遲到(分)"], ["annual", "特休(hr)"], ["sick", "病假(hr)"], ["personal", "事假(hr)"]];
+function renderData() {
+  const R = S.R, mo = S.month, el = $("#v-data");
+  const sessions = absentSessions(people(), Object.fromEntries(people().map((p) => [p.id, { att: { ...((S.subs[p.id] || {}).att || {}), ...((mo.attOverride || {})[p.id] || {}) } }])));
+  const metricKeys = [...new Set([...S.params.items.map((i) => i.metric), ...(S.params.individual || []).flatMap((b) => [b.metric, b.salesMetric].filter(Boolean))])];
+  const raw = {}; for (const id in S.subs) Object.assign(raw, S.subs[id].metrics || {});
+  const metricLabel = (k) => { const it = S.params.items.find((i) => i.metric === k); if (it) return it.name + (it.mult !== 1 ? `（${it.unit || "數量"}）` : "（獎池金額）"); const b = (S.params.individual || []).find((b) => b.salesMetric === k || b.metric === k); return b ? (b.salesMetric === k ? "銷售額（級距用）" : (b.unitLabel ? b.label.replace(/獎金$/, "") + "（" + b.unitLabel + "）" : b.label + "基數")) : k; };
+  const direct = (mo.directScores || {}).init;
+  const warn = [];
+  if (!mo.totalVisits) warn.push("還沒填「本月總人次」。");
+  if (R.checks.missingSessionVisits.length) warn.push(`有 ${R.checks.missingSessionVisits.length} 個請假診次還沒填人次。`);
+  const notDone = pool().filter((p) => !S.status[p.id]);
+  el.innerHTML = `
+  ${warn.length ? `<div class="warn">${warn.map(esc).join("<br>")}</div>` : ""}
+  <div class="card"><h2>填報進度 <span class="pill ${notDone.length ? "no" : "ok"}">${pool().length - notDone.length} / ${pool().length}</span></h2>
+    <div class="sub">${notDone.length ? "還沒送出：" + notDone.map((p) => esc(p.name)).join("、") : "全部送出 ✓"}</div></div>
+
+  <div class="card"><h2>本月設定</h2><div class="sub">修改後會自動儲存。</div>
+    <div class="row">
+      <div class="field"><label for="tv">本月總人次</label><input id="tv" type="number" min="0" value="${mo.totalVisits ?? ""}"></div>
+      <div class="field"><label for="ty">颱風等全院停診（小時）</label><input id="ty" type="number" min="0" step="any" value="${mo.typhoonHours ?? ""}"></div>
+      <div class="field" style="flex-basis:300px"><label for="tyn">停診說明（印在薪資單頁尾）</label><input id="tyn" type="text" value="${esc(mo.typhoonNote || "")}" placeholder="例：10/23 全日及 10/24 上午颱風停診"></div>
+    </div>
+    ${(S.params.individual || []).filter((x) => x.flag).map((x) => `<div class="btnrow"><label class="hint"><input type="checkbox" data-flag="${esc(x.flag)}" style="width:auto" ${(S.params.flags || {})[x.flag] ? "checked" : ""}> ${esc(nameOf(x.id))}「${esc(x.label)}」已達最高級距（之後永久適用，存在參數裡）</label></div>`).join("")}
+  </div>
+
+  <div class="card"><h2>請假診次的看診人次</h2><div class="sub">系統列出本月有人不在的診次，填入該診的看診人次。折算率 ＝（總人次 − 自己不在那幾診的人次）÷ 總人次。</div>
+    ${sessions.length ? `<div class="scroll"><table><tr><th class="l">日期</th><th class="l">診次</th><th class="l">不在的人</th><th>該診人次</th></tr>
+    ${sessions.map((s) => { const [y, m, d] = s.date.split("-"); return `<tr><td class="l tnum">${+m}/${+d}</td><td class="l">${s.slot === "am" ? "上午" : s.slot === "pm" ? "下午" : esc(s.slot)}診</td><td class="l" style="white-space:normal">${esc(s.who.join("、"))}</td><td><input class="in" type="number" min="0" data-sv="${s.key}" value="${(mo.sessionVisits || {})[s.key] ?? ""}"></td></tr>`; }).join("")}</table></div>` : `<div class="hint">本月沒有人填請假時段。</div>`}
+  </div>
+
+  <div class="card"><h2>業績數字</h2><div class="sub">左邊是員工填的數字；要更正時在「覆寫」欄填新的數字（留空＝用員工填的）。</div>
+    <div class="scroll"><table><tr><th class="l">項目</th><th>員工填報</th><th>覆寫</th><th>採用</th></tr>
+    ${metricKeys.map((k) => `<tr><td class="l">${esc(metricLabel(k))}</td><td class="tnum">${raw[k] ?? "—"}</td><td><input class="in" type="number" step="any" data-mo="${k}" value="${(mo.metricsOverride || {})[k] ?? ""}"></td><td class="tnum"><b>${R.metrics[k] ?? 0}</b></td></tr>`).join("")}
+    </table></div></div>
+
+  <div class="card"><h2>出勤</h2><div class="sub">預設採用本人填報；要更正直接改數字。紅字＝主管代填的數字不一樣，請核對。</div>
+    <div class="scroll"><table><tr><th class="name">員工</th>${ATT.map(([, l]) => `<th>${l}</th>`).join("")}<th>請假診人次</th><th>折算率</th></tr>
+    ${pool().map((p) => { const self = (S.subs[p.id] || {}).att || {}, ov = (mo.attOverride || {})[p.id] || {}, px = S.proxy[p.id];
+      return `<tr><td class="name">${esc(p.name)}${S.subs[p.id] ? "" : ' <span class="pill no">未填</span>'}</td>${ATT.map(([k]) => { const v = ov[k] ?? self[k] ?? ""; const pv = px && px[k] != null && +px[k] !== +(self[k] || 0) ? `<span class="diff">代填 ${px[k]}</span>` : "";
+        return `<td><input class="in" type="number" min="0" step="any" data-att="${p.id}|${k}" value="${v}">${pv}</td>`; }).join("")}<td class="tnum">${R.leaveVisits[p.id]}</td><td class="tnum">${R.rate[p.id].toFixed(4)}</td></tr>`; }).join("")}
+    </table></div></div>
+
+  <div class="card"><h2>初診互評</h2>
+    <label class="hint"><input type="checkbox" id="initDirect" style="width:auto" ${direct ? "checked" : ""}> 本月初診改由管理者直接給分（不用 z-score、不保底）</label>
+    ${direct ? `<div class="row" style="margin-top:10px">${pool().map((p) => `<div class="field" style="flex-basis:110px"><label>${esc(p.name)}</label><input class="in" type="number" step="any" data-init="${p.id}" value="${direct[p.id] ?? ""}"></div>`).join("")}</div>` : ""}
+  </div>
+
+  <div class="card"><h2>手動微調</h2><div class="sub">正數加錢、負數扣錢，會以「手動微調」一行印在薪資單上。</div>
+    <div class="scroll"><table><tr><th class="l">員工</th><th>金額</th><th class="l">說明</th></tr>
+    ${people().map((p) => { const x = (mo.manual || {})[p.id] || {}; return `<tr><td class="l">${esc(p.name)}</td><td><input class="in" type="number" step="any" data-man="${p.id}|amount" value="${x.amount ?? ""}"></td><td class="l"><input class="in wide" type="text" data-man="${p.id}|note" value="${esc(x.note || "")}"></td></tr>`; }).join("")}
+    </table></div></div>
+
+  <div class="card"><h2>互評原始分數</h2><div class="sub">列＝評者，欄＝被評者。</div>
+    ${S.params.items.filter((it) => it.peerPct > 0).map((it) => `<details><summary>${esc(it.name)}</summary><div class="in-body"><div class="scroll"><table><tr><th class="name">評者＼被評</th>${pool().map((p) => `<th>${esc(p.name)}</th>`).join("")}</tr>
+      ${pool().map((r) => `<tr><td class="name">${esc(r.name)}</td>${pool().map((t) => { const v = (((S.subs[r.id] || {}).peer || {})[t.id] || {})[it.key]; return `<td>${r.id === t.id ? "–" : v ?? "·"}</td>`; }).join("")}</tr>`).join("")}
+      <tr class="total"><td class="name">互評占比</td>${pool().map((p) => { const v = (S.R.peer.shares[it.key] || {})[p.id]; return `<td>${v == null ? "—" : (v * 100).toFixed(2) + "%"}</td>`; }).join("")}</tr></table></div></div></details>`).join("")}
+  </div>`;
+
+  const set = (fn) => { fn(); saveMonth(); recompute(); };
+  $("#tv").onchange = (e) => set(() => (S.month.totalVisits = num(e.target.value)));
+  $("#ty").onchange = (e) => set(() => (S.month.typhoonHours = num(e.target.value)));
+  $("#tyn").onchange = (e) => { S.month.typhoonNote = e.target.value; saveMonth(); };
+  $$("[data-flag]").forEach((i) => (i.onchange = async () => { S.params.flags = { ...(S.params.flags || {}), [i.dataset.flag]: i.checked }; await saveParams(S.params); recompute(); }));
+  $$("[data-sv]").forEach((i) => (i.onchange = () => set(() => { const sv = (S.month.sessionVisits = S.month.sessionVisits || {}); const v = num(i.value); if (v == null) delete sv[i.dataset.sv]; else sv[i.dataset.sv] = v; })));
+  $$("[data-mo]").forEach((i) => (i.onchange = () => set(() => { const o = (S.month.metricsOverride = S.month.metricsOverride || {}); const v = num(i.value); if (v == null) delete o[i.dataset.mo]; else o[i.dataset.mo] = v; })));
+  $$("[data-att]").forEach((i) => (i.onchange = () => set(() => { const [id, k] = i.dataset.att.split("|"); const o = (S.month.attOverride = S.month.attOverride || {}); o[id] = o[id] || {}; const v = num(i.value); if (v == null) delete o[id][k]; else o[id][k] = v; })));
+  $("#initDirect").onchange = (e) => set(() => { S.month.directScores = S.month.directScores || {}; if (e.target.checked) S.month.directScores.init = Object.fromEntries(pool().map((p) => [p.id, null])); else delete S.month.directScores.init; });
+  $$("[data-init]").forEach((i) => (i.onchange = () => set(() => (S.month.directScores.init[i.dataset.init] = num(i.value)))));
+  $$("[data-man]").forEach((i) => (i.onchange = () => set(() => { const [id, k] = i.dataset.man.split("|"); const o = (S.month.manual = S.month.manual || {}); o[id] = o[id] || {}; o[id][k] = k === "amount" ? num(i.value) : i.value; })));
+}
+
+/* ② 薪資表 */
+function renderTable() {
+  const R = S.R, el = $("#v-table");
+  const labels = []; const seen = new Set();
+  for (const r of R.rows) for (const x of [...r.income, ...r.deduct, ...r.adjust]) { const k = x.label.startsWith("自費獎金") ? "自費獎金" : x.label; if (!seen.has(k)) { seen.add(k); labels.push(k); } }
+  const val = (r, k) => { const x = [...r.income, ...r.deduct, ...r.adjust].find((x) => (k === "自費獎金" ? x.label.startsWith("自費獎金") : x.label === k)); return x ? x.amount : 0; };
+  const warn = [];
+  if (!R.checks.itemsBalanced || !R.checks.poolConserved) warn.push("⚠ 獎池分配不平衡，請檢查參數。");
+  if (R.checks.missingTotalVisits) warn.push("⚠ 本月總人次未填，人次獎金與折算率都不正確。");
+  if (R.checks.missingSessionVisits.length) warn.push(`⚠ 有 ${R.checks.missingSessionVisits.length} 個請假診次還沒填人次。`);
+  el.innerHTML = `${warn.length ? `<div class="warn">${warn.join("<br>")}</div>` : ""}
+  <div class="card"><h2>${ymLabel().y} 年 ${ymLabel().m} 月薪資總表</h2><div class="sub">每一行先四捨五入成整數，實領＝各行加總（與薪資單一致）。</div>
+    <div class="scroll"><table><tr><th class="name">項目</th>${R.rows.map((r) => `<th>${esc(r.name)}</th>`).join("")}<th>合計</th></tr>
+    ${labels.map((k) => `<tr><td class="name">${esc(k === "自費獎金" ? "自費獎金（董含慢籤）" : k)}</td>${R.rows.map((r) => `<td class="tnum${val(r, k) < 0 ? " neg" : ""}">${val(r, k) ? fmt(val(r, k)) : "—"}</td>`).join("")}<td class="tnum">${fmt(R.rows.reduce((s, r) => s + val(r, k), 0))}</td></tr>`).join("")}
+    <tr class="total"><td class="name">實領</td>${R.rows.map((r) => `<td class="tnum">${fmt(r.net)}</td>`).join("")}<td class="tnum">${fmt(R.netTotal)}</td></tr></table></div>
+    <div class="btnrow"><button class="btn primary" id="saveRes" type="button">儲存本月結果（存檔備查）</button><button class="btn" id="csv" type="button">下載 CSV</button></div></div>
+
+  <div class="card"><h2>自費獎金明細 <span class="pill">總池 ${fmt(R.poolTotal)}</span></h2><div class="sub">每項：固定 ＋ 互評 ＋ 均分（未乘折算率）。</div>
+    <div class="scroll"><table><tr><th class="name">項目</th><th>獎池</th>${pool().map((p) => `<th>${esc(p.name)}</th>`).join("")}</tr>
+    ${R.items.map((it) => `<tr><td class="name">${esc(it.name)}</td><td class="tnum">${fmt(it.pool)}</td>${pool().map((p) => `<td class="tnum">${fmt2(it.alloc[p.id].subtotal)}</td>`).join("")}</tr>`).join("")}
+    <tr class="total"><td class="name">折算前合計</td><td></td>${pool().map((p) => `<td class="tnum">${fmt2(R.selfpay.pre[p.id])}</td>`).join("")}</tr>
+    <tr><td class="name">折算率</td><td></td>${pool().map((p) => `<td class="tnum">${R.rate[p.id].toFixed(4)}</td>`).join("")}</tr>
+    <tr><td class="name">被折額</td><td></td>${pool().map((p) => `<td class="tnum">${fmt2(-R.selfpay.cut[p.id])}</td>`).join("")}</tr>
+    <tr><td class="name">分回額</td><td></td>${pool().map((p) => `<td class="tnum">${fmt2(R.selfpay.back[p.id])}</td>`).join("")}</tr>
+    <tr class="total"><td class="name">最終自費獎金</td><td class="tnum">${fmt(R.poolTotal)}</td>${pool().map((p) => `<td class="tnum">${fmt2(R.selfpay.final[p.id])}</td>`).join("")}</tr></table></div>
+    <div class="hint" style="margin-top:8px">${R.checks.itemsBalanced && R.checks.poolConserved ? "✓ 各項分配加總等於獎池；最終合計守恆。" : "⚠ 守恆檢查未通過"}</div></div>`;
+  $("#saveRes").onclick = async () => {
+    try { await F.setDoc(F.doc(db, "results", ym()), { month: ym(), savedAt: F.serverTimestamp(), netTotal: R.netTotal, poolTotal: R.poolTotal,
+      rows: R.rows.map((r) => ({ id: r.id, name: r.name, net: r.net, income: r.income.map(({ label, amount, note }) => ({ label, amount, note })), deduct: r.deduct.map(({ label, amount, note }) => ({ label, amount, note })), adjust: r.adjust.map(({ label, amount, note }) => ({ label, amount, note })) })),
+      items: R.items.map((i) => ({ key: i.key, name: i.name, pool: i.pool, qty: i.qty })), input: S.month }); toast("已存檔"); }
+    catch (e) { console.error(e); toast("存檔失敗"); }
+  };
+  $("#csv").onclick = () => {
+    const rows = [["項目", ...R.rows.map((r) => r.name), "合計"], ...labels.map((k) => [k, ...R.rows.map((r) => val(r, k)), R.rows.reduce((s, r) => s + val(r, k), 0)]), ["實領", ...R.rows.map((r) => r.net), R.netTotal]];
+    const blob = new Blob(["﻿" + rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `惠騰薪資_${ym()}.csv`; a.click();
+  };
+}
+
+/* ③ 薪資單 */
+function slipHtml(r) {
+  const { y, m } = ymLabel(); const pm = m === 12 ? 1 : m + 1;
+  const line = (x, neg) => `<div class="r${neg ? " m" : ""}"><span>${esc(x.label)}${x.note ? `<i>${esc(x.note)}</i>` : ""}</span><span class="n">${fmt(x.amount)}</span></div>`;
+  const tyNote = S.month.typhoonHours ? `${esc(S.month.typhoonNote || "本月颱風停診")}，共 ${S.month.typhoonHours} 小時依規定不支薪。<br>` : "";
+  return `<div class="pic"><div class="cardx">
+    <div class="hd"><div class="clinic">惠騰內科診所</div><div class="title">薪資明細</div>
+      <div class="meta"><div class="nm">${esc(r.name)}</div><div class="period">${y} 年 ${m} 月薪資<br>${pm} 月 10 日發放</div></div></div>
+    <div class="net"><div class="l">本月實領</div><div class="v"><small>NT$</small>${fmt(r.net)}</div>${r.cash ? `<div class="cash">其中現金 ${fmt(r.cash)}・轉帳 ${fmt(r.net - r.cash)}</div>` : ""}</div>
+    <div class="sec"><h3>收入</h3>${r.income.map((x) => line(x)).join("")}</div>
+    <div class="subt"><span>收入小計</span><span>${fmt(r.incomeSum)}</span></div>
+    <div class="sec"><h3>扣除</h3>${r.deduct.map((x) => line(x, true)).join("") || '<div class="r"><span>無</span><span class="n">0</span></div>'}</div>
+    <div class="subt m"><span>扣除小計</span><span>${fmt(r.deductSum)}</span></div>
+    ${r.adjust.length ? `<div class="sec"><h3>調整</h3>${r.adjust.map((x) => line(x, x.amount < 0)).join("")}</div>` : ""}
+    <div class="ft">${tyNote}薪資屬個人資料，請勿外流或探詢他人薪資。如有疑問請直接洽徐院長。</div></div></div>`;
+}
+async function savePng(node, name) {
+  const url = await window.htmlToImage.toPng(node, { pixelRatio: 2.5, skipFonts: true, backgroundColor: "#eef2f1" });
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+}
+function renderSlips() {
+  const R = S.R, el = $("#v-slips");
+  const list = R.rows.filter((r) => r.id !== "xu");
+  el.innerHTML = `<div class="card"><h2>薪資單</h2><div class="sub">每張可下載成圖片，用 LINE 傳給本人。每人只看得到自己的金額。</div>
+    <div class="btnrow"><button class="btn primary" id="dlAll" type="button">全部下載圖片</button></div></div>
+    <div class="slips">${list.map((r, i) => `<div class="slip-wrap"><div id="slip-${r.id}">${slipHtml(r)}</div><button class="btn" data-dl="${r.id}" type="button">下載 ${esc(r.name)} 的圖片</button></div>`).join("")}</div>`;
+  const fname = (r) => `${list.indexOf(r) + 1}_${r.name}_${ym()}薪資單.png`;
+  $$("[data-dl]").forEach((b) => (b.onclick = () => { const r = list.find((x) => x.id === b.dataset.dl); savePng($("#slip-" + r.id + " .pic"), fname(r)); }));
+  $("#dlAll").onclick = async () => { for (const r of list) { await savePng($("#slip-" + r.id + " .pic"), fname(r)); await new Promise((ok) => setTimeout(ok, 400)); } };
+}
+
+/* ④ 團隊看板 */
+function boardQty(it) {
+  const p = S.params.items.find((x) => x.key === it.key) || {};
+  if (p.boardQty && p.boardQty.itemsOf) {
+    const all = {}; for (const id in S.subs) Object.assign(all, (S.subs[id].metrics || {})[p.boardQty.itemsOf + "_items"] || {});
+    const q = Object.entries(all).filter(([k]) => !(p.boardQty.exclude || []).includes(k)).reduce((s, [, v]) => s + (+v || 0), 0);
+    return q ? `${q} ${p.boardQty.unit || ""}` : "";
+  }
+  return p.mult !== 1 ? `${it.qty.toLocaleString()} ${it.unit}` : "";
+}
+function renderBoard() {
+  const R = S.R, { y, m } = ymLabel(), pm = m === 12 ? 1 : m + 1;
+  const items = [...R.items].sort((a, b) => b.pool - a.pool), mx = Math.max(1, ...items.map((i) => i.pool));
+  $("#v-board").innerHTML = `<div class="card"><h2>團隊自費獎金池看板</h2><div class="sub">只顯示總池與各項業績量、獎池；不含個人分配、銷售額與個人獎金。</div>
+    <div class="row"><div class="field" style="flex-basis:360px"><label for="thx">結尾文字</label><input id="thx" type="text" value="${esc(S.month.boardThanks || "謝謝大家這個月的努力與付出。")}"></div>
+    <button class="btn primary" id="dlBoard" type="button">下載圖片</button></div></div>
+    <div id="boardPic"><div class="pic"><div class="cardx">
+      <div class="hd"><div class="clinic">惠騰內科診所</div><div class="title">${m} 月團隊自費獎金池</div><div class="period" style="text-align:left;margin-top:4px">${y} 年 ${m} 月・${pm} 月 10 日發放</div></div>
+      <div class="net"><div class="l">本月自費獎金總池</div><div class="v"><small>NT$</small>${fmt(R.poolTotal)}</div></div>
+      <div class="sec"><h3>各項業績與獎池</h3>${items.map((it) => `<div class="it"><div class="top"><span>${esc(it.name)}<i>${esc(boardQty(it))}</i></span><span class="n">${fmt(it.pool)}</span></div><div class="bar2"><div style="width:${((it.pool / mx) * 100).toFixed(1)}%"></div></div></div>`).join("")}</div>
+      <div class="thanks">${esc(S.month.boardThanks || "謝謝大家這個月的努力與付出。")}<small>個人分配金額請見各自的薪資單。</small></div></div></div></div>`;
+  $("#thx").onchange = (e) => { S.month.boardThanks = e.target.value; saveMonth(); renderBoard(); };
+  $("#dlBoard").onclick = () => savePng($("#boardPic .pic"), `0_${m}月團隊自費獎金池.png`);
+}
+
+/* ⑤ 參數 */
+async function saveParams(p) { await F.setDoc(F.doc(db, "admin", "params"), p); S.params = p; toast("參數已儲存"); }
+function renderParams() {
+  const el = $("#v-params"), P = S.params;
+  el.innerHTML = `${P ? `<div class="card"><h2>人員參數一覽</h2><div class="sub">要修改請編輯下方 JSON 後儲存。</div><div class="scroll"><table>
+    <tr><th class="name">員工</th><th>底薪</th><th>加給合計</th><th>健保</th><th>勞保</th><th>加班費率</th><th>出勤滿額</th><th>貢獻度</th><th class="l">其他</th></tr>
+    ${P.people.map((p) => `<tr><td class="name">${esc(p.name)}</td><td>${fmt(p.base || 0)}</td><td>${fmt((p.allowances || []).reduce((s, a) => s + (+a.amount || 0), 0))}</td><td>${fmt(p.nhi || 0)}</td><td>${fmt(p.li || 0)}</td><td>${p.otRate || 0}</td><td>${fmt(p.attFull || 0)}</td><td>${p.contrib || "—"}</td><td class="l">${esc((p.extras || []).map((x) => `${x.label} ${x.amount}${x.cash ? "（現金）" : ""}`).join("、"))}${p.inPool ? "" : " 不進池"}</td></tr>`).join("")}
+    </table></div></div>` : ""}
+    <div class="card"><h2>參數 JSON</h2><div class="sub">人員、自費獎金 8 項比例、個人獎金規則都在這裡。只有管理者讀得到（存在 Firestore admin/params）。規則說明見 docs/RULES.md。</div>
+      <textarea class="json" id="pj" spellcheck="false">${esc(P ? JSON.stringify(P, null, 1) : "")}</textarea>
+      <div class="btnrow"><button class="btn primary" id="pSave" type="button">檢查並儲存</button>
+        <label class="btn" style="display:inline-block">匯入 JSON 檔<input id="pFile" type="file" accept=".json,application/json" hidden></label></div>
+      <div class="err" id="pErr"></div></div>`;
+  const validate = (p) => {
+    if (!Array.isArray(p.people) || !Array.isArray(p.items)) return "需要 people 與 items 陣列。";
+    for (const it of p.items) { const f = Object.values(it.fixed || {}).reduce((s, v) => s + +v, 0); if (Math.abs(f + it.peerPct + it.evenPct - 100) > 1e-9) return `「${it.name}」固定＋互評＋均分 = ${f + it.peerPct + it.evenPct}%，應為 100%。`; }
+    return "";
+  };
+  $("#pSave").onclick = async () => { let p; try { p = JSON.parse($("#pj").value); } catch (e) { $("#pErr").textContent = "JSON 格式錯誤：" + e.message; return; }
+    const v = validate(p); if (v) { $("#pErr").textContent = v; return; } $("#pErr").textContent = ""; await saveParams(p); recompute(); };
+  $("#pFile").onchange = async (e) => { const f = e.target.files[0]; if (!f) return; $("#pj").value = await f.text(); toast("已載入，確認後按「檢查並儲存」"); };
+}
+</script>
+</body>
+</html>
