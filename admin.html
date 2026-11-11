@@ -156,10 +156,16 @@ details .in-body{padding:10px}
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script>
+// 程式載入失敗時，在畫面上顯示原因（避免一片空白）
+addEventListener("error", (e) => { const m = document.querySelector("main"); if (!m || document.getElementById("bootErr")) return;
+  m.insertAdjacentHTML("afterbegin", '<section class="card" id="bootErr"><h2>後台載入失敗</h2><div class="sub">請按 Ctrl＋Shift＋R（Mac：Cmd＋Shift＋R）強制重新整理。若仍失敗，請把下面這行截圖給管理者。</div><div class="err"></div></section>');
+  document.querySelector("#bootErr .err").textContent = (e.message || "") + (e.filename ? "（" + e.filename.split("/").pop() + "）" : ""); }, true);
+</script>
 <script type="module">
-import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS } from "./firebase-config.js";
-import { slipFlexMessage } from "./line-flex.js";
-import { computePayroll, absentSessions } from "./engine.js";
+import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS } from "./firebase-config.js?v=20261111c";
+import { slipFlexMessage } from "./line-flex.js?v=20261111c";
+import { computePayroll, absentSessions } from "./engine.js?v=20261111c";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

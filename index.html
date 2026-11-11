@@ -638,7 +638,7 @@ startCloud();
 </script>
 
 <script type="module">
-import {firebaseConfig,STAFF_DOMAIN as SD,isConfigured} from "./firebase-config.js";
+import {firebaseConfig,STAFF_DOMAIN as SD,isConfigured} from "./firebase-config.js?v=20261111c";
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
