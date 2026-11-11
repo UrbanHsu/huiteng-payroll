@@ -185,6 +185,12 @@ tr.self td,tr.self td.name{background:var(--self);color:var(--muted)}
 
 /* manager footer */
 
+.install{padding:0}
+.install>summary{list-style:none;cursor:pointer;padding:14px 18px;font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px}
+.install>summary::-webkit-details-marker{display:none}
+.install>summary::after{content:"看怎麼做 ›";margin-left:auto;white-space:nowrap;font-size:12.5px;color:var(--accent);font-weight:700}
+.install[open]>summary::after{content:"收起 ⌃"}
+.install[open]{padding:0 18px 18px}.install[open]>summary{padding-inline:0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -207,9 +213,9 @@ tr.self td,tr.self td.name{background:var(--self);color:var(--muted)}
   <div id="pickArea"></div>
   <div id="formArea" style="display:flex;flex-direction:column;gap:16px"></div>
 
-  <section class="card" id="installGuide">
-    <h2>📲 把表單加到手機桌面（像 App 一樣用）</h2>
-    <div class="sub">加一次之後，每個月直接點桌面上的「惠騰月報表」圖示就能開，不用再找連結。</div>
+  <details class="card install" id="installGuide">
+    <summary>📲 想把填單頁加到手機桌面嗎？</summary>
+    <div class="sub" style="margin-top:12px">加一次之後，每個月直接點桌面上的「惠騰月報表」圖示就能開，不用再找連結。</div>
     <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:4px">
       <div style="flex:1 1 240px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px">
         <div style="font-weight:700;margin-bottom:8px"> iPhone（請用 Safari 開啟）</div>
@@ -229,7 +235,8 @@ tr.self td,tr.self td.name{background:var(--self);color:var(--muted)}
       </div>
     </div>
     <div class="hint" style="margin-top:12px">桌面會出現惠騰血滴寶寶的圖示（名字是「惠騰月報表」），之後每個月點它就能直接填表。</div>
-  </section>
+  </details>
+  <script>if(matchMedia("(display-mode: standalone)").matches||navigator.standalone)document.getElementById("installGuide").hidden=true;</script>
 
 </main>
 <div class="toast" id="toast" role="status"></div>
