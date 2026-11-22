@@ -14,8 +14,9 @@ ADMIN_EMAILS = "ilms.always03@gmail.com"
 ADMIN_EMAIL_HASHES = "6df5deb4c527cac752745cf572c3a675cf3531616796ed142641722738314c95"
 # 允許的網頁來源（CORS）
 ALLOWED_ORIGINS = "https://urbanhsu.github.io"
-# LINE Login channel 的 Channel ID（LIFF 所在的 channel；公開資訊）
-LINE_LOGIN_CHANNEL_ID = "2012744796"
+# LINE Login channel 的 Channel ID（LIFF 所在的 channel；公開資訊）；兩間診所各一個 channel
+LINE_LOGIN_CHANNEL_ID_HUIYUN = "2012744796"
+LINE_LOGIN_CHANNEL_ID_HUITENG = ""
 # 惠韻回饋單的 LIFF ID（建好 LIFF 後填入；公開資訊）
 LIFF_ID_HUIYUN = "2012744796-T8IXkC9c"
 # 惠騰報表的 LIFF ID

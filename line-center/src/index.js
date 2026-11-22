@@ -11,7 +11,7 @@
  *   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN
  *   FIREBASE_SA_YUN_SALARY   yun-salary 的 Firebase 服務帳號 JSON（簽 custom token 用）
  *   FIREBASE_SA_HUITENG      huiteng-payroll-ddef6 的 Firebase 服務帳號 JSON
- * 公開設定（wrangler.toml [vars]）：LINE_LOGIN_CHANNEL_ID, LIFF_ID_HUIYUN, LIFF_ID_HUITENG
+ * 公開設定（wrangler.toml [vars]）：LINE_LOGIN_CHANNEL_ID_HUIYUN／_HUITENG（兩個 LINE Login channel）, LIFF_ID_HUIYUN, LIFF_ID_HUITENG
  * 還沒設定 LIFF ID 時，推播按鈕直接開填單網址（員工用密碼登入）
  * KV 鍵：
  *   code:{碼}          → {system,id,name,created}
@@ -292,7 +292,7 @@ function monthlyJobs(today, settings) {
 
 const FEEDBACK = {
   huiyun: {
-    project: "yun-salary", clinic: "惠韻牙醫診所", liffVar: "LIFF_ID_HUIYUN", saVar: "FIREBASE_SA_YUN_SALARY",
+    project: "yun-salary", clinic: "惠韻牙醫診所", liffVar: "LIFF_ID_HUIYUN", channelVar: "LINE_LOGIN_CHANNEL_ID_HUIYUN", saVar: "FIREBASE_SA_YUN_SALARY",
     formUrl: "https://urbanhsu.github.io/yun_salary/form.html",
     rosterPath: "meta/roster", statusPath: (m) => `formStatus/${m}`,
     theme: { head: "#F7B4A7", sub: "#7A3B30", title: "#4A2520", btn: "#E0705F" },
@@ -310,7 +310,7 @@ const FEEDBACK = {
     },
   },
   huiteng: {
-    project: "huiteng-payroll-ddef6", clinic: "惠騰內科診所", liffVar: "LIFF_ID_HUITENG", saVar: "FIREBASE_SA_HUITENG",
+    project: "huiteng-payroll-ddef6", clinic: "惠騰內科診所", liffVar: "LIFF_ID_HUITENG", channelVar: "LINE_LOGIN_CHANNEL_ID_HUITENG", saVar: "FIREBASE_SA_HUITENG",
     formUrl: "https://urbanhsu.github.io/huiteng-payroll/",
     rosterPath: "meta/roster", statusPath: (m) => `status/${m}`, settingsPath: "meta/settings",
     theme: { head: "#CFE8D5", sub: "#2F5E40", title: "#1F3D2A", btn: "#4E9A6A" },
@@ -467,17 +467,17 @@ async function liffLogin(req, env) {
   const b = await req.json().catch(() => ({}));
   const cfg = FEEDBACK[b.system];
   if (!cfg) return json({ error: "bad_system" }, 400, h);
-  const sa = env[cfg.saVar];
-  if (!env.LINE_LOGIN_CHANNEL_ID || !sa) return json({ error: "not_configured" }, 503, h);
+  const sa = env[cfg.saVar], channel = String(env[cfg.channelVar] || "");
+  if (!channel || !sa) return json({ error: "not_configured" }, 503, h);
   if (typeof b.idToken !== "string" || !b.idToken) return json({ error: "invalid_token" }, 401, h);
 
   const v = await fetch("https://api.line.me/oauth2/v2.1/verify", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ id_token: b.idToken, client_id: String(env.LINE_LOGIN_CHANNEL_ID) }),
+    body: new URLSearchParams({ id_token: b.idToken, client_id: channel }),
   });
   const vj = v.ok ? await v.json().catch(() => null) : null;
-  if (!vj || !vj.sub || String(vj.aud) !== String(env.LINE_LOGIN_CHANNEL_ID)) return json({ error: "invalid_token" }, 401, h);
+  if (!vj || !vj.sub || String(vj.aud) !== channel) return json({ error: "invalid_token" }, 401, h);
 
   const link = ((await getJ(env, "user:" + vj.sub)) || []).find((x) => x.system === b.system);
   const bind = link && (await getJ(env, `bind:${b.system}:${link.id}`));
