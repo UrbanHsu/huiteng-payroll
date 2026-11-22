@@ -1,0 +1,60 @@
+name: LINE 測試身分
+
+# 手動執行：
+#   code ：產生「測試身分」的綁定碼（1 小時內有效），在 LINE 官方帳號傳這組碼就能綁定
+#   card ：推一張測試用的填單卡片給已綁定的測試身分
+on:
+  workflow_dispatch:
+    inputs:
+      system:
+        description: "系統（huiyun＝牙科，huiteng＝內科）"
+        required: true
+        default: huiyun
+        type: choice
+        options: [huiyun, huiteng]
+      action:
+        description: "code＝產生綁定碼，card＝推測試卡片"
+        required: true
+        default: code
+        type: choice
+        options: [code, card]
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      LINE_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      SYS: ${{ inputs.system }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 執行
+        run: |
+          set -euo pipefail
+          API="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/storage/kv/namespaces"
+          H=(-H "Authorization: Bearer $CF_TOKEN")
+          NS=$(curl -fsS "${H[@]}" "$API?per_page=100" | jq -r '.result[] | select(.title=="hh-line-center-kv") | .id' | head -n1)
+          if [ "${{ inputs.action }}" = "code" ]; then
+            CODE=$(printf '%06d' $(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 )))
+            NOW=$(date -u +%FT%TZ)
+            curl -fsS "${H[@]}" -X PUT "$API/$NS/values/code:$CODE?expiration_ttl=3600" \
+              --data "{\"system\":\"$SYS\",\"id\":\"test\",\"name\":\"測試身分\",\"created\":\"$NOW\"}" > /dev/null
+            echo "### 測試身分綁定碼（$SYS）：$CODE" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "1 小時內在 LINE 官方帳號傳這 6 位數字即可綁定。" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            USER=$(curl -fsS "${H[@]}" "$API/$NS/values/bind:$SYS:test" | jq -r .userId)
+            LIFF=$(grep -E "^LIFF_ID_$(echo $SYS | tr a-z A-Z) =" line-center/wrangler.toml | cut -d'"' -f2)
+            M=$(TZ=Asia/Taipei date -d "$(TZ=Asia/Taipei date +%Y-%m-01) -1 day" +%Y%m)
+            URL="https://liff.line.me/$LIFF?m=$M"
+            [ -z "$LIFF" ] && URL=$( [ "$SYS" = huiyun ] && echo "https://urbanhsu.github.io/yun_salary/form.html?m=$M" || echo "https://urbanhsu.github.io/huiteng-payroll/?m=$M" )
+            jq -n --arg to "$USER" --arg url "$URL" --arg m "$((10#${M:4:2}))" '{to:$to,messages:[{type:"flex",altText:"測試：\($m) 月填單",contents:{type:"bubble",size:"kilo",
+              header:{type:"box",layout:"vertical",backgroundColor:"#F7B4A7",paddingAll:"16px",contents:[{type:"text",text:"測試卡片",size:"xs",color:"#7A3B30"},{type:"text",text:"\($m) 月填單",size:"xl",weight:"bold",color:"#4A2520"}]},
+              body:{type:"box",layout:"vertical",paddingAll:"16px",contents:[{type:"text",text:"這是測試用卡片，按下面按鈕確認能不能直接登入。",wrap:true,size:"sm",color:"#555555"}]},
+              footer:{type:"box",layout:"vertical",paddingAll:"12px",contents:[{type:"button",style:"primary",color:"#E0705F",height:"sm",action:{type:"uri",label:"開始填寫",uri:$url}}]}}}]}' > /tmp/msg.json
+            curl -fsS -X POST https://api.line.me/v2/bot/message/push -H "Authorization: Bearer $LINE_TOKEN" -H "content-type: application/json" -d @/tmp/msg.json > /dev/null
+            echo "### 已推測試卡片（$SYS）" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

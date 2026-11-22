@@ -294,6 +294,7 @@ const FEEDBACK = {
   huiyun: {
     project: "yun-salary", clinic: "惠韻牙醫診所", liffVar: "LIFF_ID_HUIYUN", channelVar: "LINE_LOGIN_CHANNEL_ID_HUIYUN", saVar: "FIREBASE_SA_YUN_SALARY",
     formUrl: "https://urbanhsu.github.io/yun_salary/form.html",
+    testIds: ["test"], // 管理者測試用身分：可用 LINE 登入，但不在名單上、不會收到每月推播
     rosterPath: "meta/roster", statusPath: (m) => `formStatus/${m}`,
     theme: { head: "#F7B4A7", sub: "#7A3B30", title: "#4A2520", btn: "#E0705F" },
     // 1 號推上個月回饋單；截止日（5 號）前一天提醒
@@ -312,6 +313,7 @@ const FEEDBACK = {
   huiteng: {
     project: "huiteng-payroll-ddef6", clinic: "惠騰內科診所", liffVar: "LIFF_ID_HUITENG", channelVar: "LINE_LOGIN_CHANNEL_ID_HUITENG", saVar: "FIREBASE_SA_HUITENG",
     formUrl: "https://urbanhsu.github.io/huiteng-payroll/",
+    testIds: ["test"],
     rosterPath: "meta/roster", statusPath: (m) => `status/${m}`, settingsPath: "meta/settings",
     theme: { head: "#CFE8D5", sub: "#2F5E40", title: "#1F3D2A", btn: "#4E9A6A" },
     // 1 號推上個月報表；截止日前一天提醒
@@ -485,7 +487,7 @@ async function liffLogin(req, env) {
 
   const id = String(link.id).toLowerCase();
   let name = bind.name || id;
-  try { // 已離職（不在填單名單上）就不放行
+  if (!(cfg.testIds || []).includes(id)) try { // 已離職（不在填單名單上）就不放行
     const roster = (await fsGet(cfg.project, cfg.rosterPath)).people || [];
     const p = roster.find((x) => x && String(x.id).toLowerCase() === id);
     if (roster.length && !p) return json({ error: "not_active" }, 403, h);
