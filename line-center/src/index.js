@@ -5,8 +5,7 @@
  * - POST /api/*          管理者 API（需 Firebase ID token，email 在 ADMIN_EMAILS）
  * - POST /api/liff-login 員工從 LINE（LIFF）打開填單頁 → 換 Firebase custom token（不需密碼）
  * - 排程（每天 16:00 台灣時間）：
- *     惠韻 huiyun ：月底推「X 月回饋單」，隔月 3 號提醒還沒填的人
- *     惠騰 huiteng：每月 1 號推「上個月報表」，截止日（meta/settings.closeDay，預設 5）前一天提醒
+ *     兩邊統一：每月 1 號推「上個月」的填單，截止日（5 號；內科可在 meta/settings.closeDay 改）前一天提醒還沒填的人
  *
  * 秘密值（由 GitHub Actions 寫入，不在程式碼中）：
  *   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN
@@ -281,26 +280,32 @@ async function notifyAdmins(env, text) {
 /* ================================================================
  * 每月回饋單（LINE 推播 ＋ LIFF 免密碼登入）
  * ================================================================ */
+// 兩邊共用的時程：每月 1 號推上個月；截止日（預設 5 號）前一天提醒
+const closeDayOf = (settings = {}) => Math.min(28, Math.max(2, +settings.closeDay || 5));
+const dueOf = (m, settings) => `${m === 12 ? 1 : m + 1}/${closeDayOf(settings)}`;
+function monthlyJobs(today, settings) {
+  const j = [], d = today.getUTCDate(), month = prevYm(ymOf(today));
+  if (d === 1) j.push({ kind: "open", month });
+  if (d === closeDayOf(settings) - 1) j.push({ kind: "remind", month });
+  return j;
+}
+
 const FEEDBACK = {
   huiyun: {
     project: "yun-salary", clinic: "惠韻牙醫診所", liffVar: "LIFF_ID_HUIYUN", saVar: "FIREBASE_SA_YUN_SALARY",
     formUrl: "https://urbanhsu.github.io/yun_salary/form.html",
     rosterPath: "meta/roster", statusPath: (m) => `formStatus/${m}`,
     theme: { head: "#F7B4A7", sub: "#7A3B30", title: "#4A2520", btn: "#E0705F" },
-    // 每月最後一天推當月；隔月 3 號提醒
-    jobs(today, tomorrow) {
-      const j = [];
-      if (tomorrow.getUTCDate() === 1) j.push({ kind: "open", month: ymOf(today) });
-      if (today.getUTCDate() === 3) j.push({ kind: "remind", month: prevYm(ymOf(today)) });
-      return j;
-    },
-    text({ m, kind, name }) {
+    // 1 號推上個月回饋單；截止日（5 號）前一天提醒
+    jobs: (today, tomorrow, settings) => monthlyJobs(today, settings),
+    text({ m, kind, name, settings }) {
+      const due = dueOf(m, settings);
       return {
         title: `${m} 月回饋單`,
         alt: kind === "remind" ? `提醒：${m} 月回饋單還沒填` : `${m} 月回饋單開放填寫`,
         body: kind === "remind"
-          ? `${name ? name + "，" : ""}${m} 月回饋單還沒填喔！請抽空花幾分鐘完成，謝謝 🙏`
-          : `${name ? name + "，" : ""}這個月辛苦了！請花幾分鐘填寫 ${m} 月回饋單。`,
+          ? `${name ? name + "，" : ""}${m} 月回饋單還沒填喔！截止日是 ${due}，請抽空完成，謝謝 🙏`
+          : `${name ? name + "，" : ""}${m} 月辛苦了！請在 ${due} 前花幾分鐘填寫 ${m} 月回饋單。`,
       };
     },
   },
@@ -310,14 +315,9 @@ const FEEDBACK = {
     rosterPath: "meta/roster", statusPath: (m) => `status/${m}`, settingsPath: "meta/settings",
     theme: { head: "#CFE8D5", sub: "#2F5E40", title: "#1F3D2A", btn: "#4E9A6A" },
     // 1 號推上個月報表；截止日前一天提醒
-    jobs(today, tomorrow, settings) {
-      const j = [], d = today.getUTCDate(), close = Math.min(28, Math.max(2, +settings.closeDay || 5));
-      if (d === 1) j.push({ kind: "open", month: prevYm(ymOf(today)) });
-      if (d === Math.max(2, close - 1)) j.push({ kind: "remind", month: prevYm(ymOf(today)) });
-      return j;
-    },
+    jobs: (today, tomorrow, settings) => monthlyJobs(today, settings),
     text({ m, kind, name, settings }) {
-      const close = Math.min(28, Math.max(2, +settings.closeDay || 5)), due = `${m === 12 ? 1 : m + 1}/${close}`;
+      const due = dueOf(m, settings);
       return {
         title: `${m} 月份報表`,
         alt: kind === "remind" ? `提醒：${m} 月份報表還沒填` : `${m} 月份報表開放填寫`,
