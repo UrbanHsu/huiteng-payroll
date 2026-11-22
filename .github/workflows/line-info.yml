@@ -28,3 +28,11 @@ jobs:
             echo "- 本月額度：$(echo "$Q" | jq -r 'if .type=="limited" then "\(.value) 則" else "無上限" end')"
             echo "- 本月已用：$(echo "$U" | jq -r .totalUsage) 則"
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 檢查 LIFF 登入設定（用假 token 測試；invalid_token＝設定完成，not_configured＝還缺）
+        run: |
+          for s in huiyun huiteng; do
+            R=$(curl -sS -X POST https://hh-line-center.huihui-clinic.workers.dev/api/liff-login \
+              -H "content-type: application/json" -d "{\"system\":\"$s\",\"idToken\":\"test\"}")
+            echo "- $s：$R" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
