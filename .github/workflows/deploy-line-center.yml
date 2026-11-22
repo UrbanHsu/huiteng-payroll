@@ -62,18 +62,23 @@ jobs:
         working-directory: line-center
         env:
           SA_YUN: ${{ secrets.FIREBASE_SA_YUN_SALARY }}
+          SA_HT: ${{ secrets.FIREBASE_SA_HUITENG }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          if [ -n "${SA_YUN:-}" ]; then
-            printf '%s' "$SA_YUN" | jq -c . > /tmp/sa.json
-            npx --yes wrangler@3 secret put FIREBASE_SA_YUN_SALARY < /tmp/sa.json > /dev/null
-            rm -f /tmp/sa.json
-            echo "已寫入 FIREBASE_SA_YUN_SALARY"
-          else
-            echo "尚未設定 FIREBASE_SA_YUN_SALARY（LIFF 登入暫時無法使用）"
-          fi
+          put() {  # $1＝Worker secret 名稱，$2＝內容
+            if [ -n "$2" ]; then
+              printf '%s' "$2" | jq -c . > /tmp/sa.json
+              npx --yes wrangler@3 secret put "$1" < /tmp/sa.json > /dev/null
+              rm -f /tmp/sa.json
+              echo "已寫入 $1"
+            else
+              echo "尚未設定 $1（這套系統的 LINE 免密碼登入暫時無法使用）"
+            fi
+          }
+          put FIREBASE_SA_YUN_SALARY "${SA_YUN:-}"
+          put FIREBASE_SA_HUITENG "${SA_HT:-}"
 
       - name: 顯示推播中心網址
         run: |

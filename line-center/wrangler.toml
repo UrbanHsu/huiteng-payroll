@@ -18,8 +18,10 @@ ALLOWED_ORIGINS = "https://urbanhsu.github.io"
 LINE_LOGIN_CHANNEL_ID = ""
 # 惠韻回饋單的 LIFF ID（建好 LIFF 後填入；公開資訊）
 LIFF_ID_HUIYUN = ""
+# 惠騰報表的 LIFF ID
+LIFF_ID_HUITENG = ""
 
-# 每天 08:00 UTC＝台灣 16:00；程式自己判斷「明天是 1 號」或「今天是 3 號」
+# 每天 08:00 UTC＝台灣 16:00；各系統自己判斷今天要不要推（見 src/index.js 的 FEEDBACK）
 [triggers]
 crons = ["0 8 * * *"]
 

@@ -7,14 +7,22 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
     function isAdmin() {
-      return signedIn() && request.auth.token.email in [
+      return signedIn() && request.auth.token.get('email', '') in [
         "ilms.always03@gmail.com"
       ];
     }
-    function isStaff() {
-      return signedIn() && request.auth.token.email.matches('^[a-z]+@staff[.]huiteng-payroll[.]app$');
+    // 從 LINE（LIFF）登入：推播中心簽發的 custom token，帶 staffId、sys 兩個欄位，沒有 email
+    function isLineStaff() {
+      return signedIn() && request.auth.token.get('sys', '') == 'huiteng'
+        && request.auth.token.get('staffId', '').matches('^[a-z]+$');
     }
-    function staffId() { return request.auth.token.email.split('@')[0]; }
+    function isStaff() {
+      return isLineStaff() || (signedIn()
+        && request.auth.token.get('email', '').matches('^[a-z]+@staff[.]huiteng-payroll[.]app$'));
+    }
+    function staffId() {
+      return isLineStaff() ? request.auth.token.staffId : request.auth.token.email.split('@')[0];
+    }
 
     // 員工本人的月報：subs/{YYYYMM}_{id}
     match /subs/{docId} {
@@ -40,6 +48,11 @@ service cloud.firestore {
       allow create, update: if isAdmin() || (isStaff()
         && request.resource.data.diff(resource == null ? {} : resource.data).affectedKeys().hasOnly([staffId()]));
       allow delete: if isAdmin();
+    }
+    // 填單名單（只有代號與名字）：所有人可看，只有管理者可改（LINE 推播中心讀這份決定推給誰）
+    match /meta/roster {
+      allow read: if true;
+      allow write: if isAdmin();
     }
     // 填單頁問候語與截止日：所有人可看，只有管理者可改
     match /meta/settings {

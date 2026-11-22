@@ -4,12 +4,16 @@
  * - POST /webhook        LINE webhook：員工傳 6 位數綁定碼 → 綁定
  * - POST /api/*          管理者 API（需 Firebase ID token，email 在 ADMIN_EMAILS）
  * - POST /api/liff-login 員工從 LINE（LIFF）打開填單頁 → 換 Firebase custom token（不需密碼）
- * - 排程（每天 16:00 台灣時間）：月底推播「X 月回饋單」、隔月 3 號提醒還沒填的人
+ * - 排程（每天 16:00 台灣時間）：
+ *     惠韻 huiyun ：月底推「X 月回饋單」，隔月 3 號提醒還沒填的人
+ *     惠騰 huiteng：每月 1 號推「上個月報表」，截止日（meta/settings.closeDay，預設 5）前一天提醒
  *
  * 秘密值（由 GitHub Actions 寫入，不在程式碼中）：
  *   LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN
  *   FIREBASE_SA_YUN_SALARY   yun-salary 的 Firebase 服務帳號 JSON（簽 custom token 用）
- * 公開設定（wrangler.toml [vars]）：LINE_LOGIN_CHANNEL_ID, LIFF_ID_HUIYUN
+ *   FIREBASE_SA_HUITENG      huiteng-payroll-ddef6 的 Firebase 服務帳號 JSON
+ * 公開設定（wrangler.toml [vars]）：LINE_LOGIN_CHANNEL_ID, LIFF_ID_HUIYUN, LIFF_ID_HUITENG
+ * 還沒設定 LIFF ID 時，推播按鈕直接開填單網址（員工用密碼登入）
  * KV 鍵：
  *   code:{碼}          → {system,id,name,created}
  *   pend:{system}:{id} → 碼
@@ -278,7 +282,51 @@ async function notifyAdmins(env, text) {
  * 每月回饋單（LINE 推播 ＋ LIFF 免密碼登入）
  * ================================================================ */
 const FEEDBACK = {
-  huiyun: { project: "yun-salary", clinic: "惠韻牙醫診所", liffVar: "LIFF_ID_HUIYUN", saVar: "FIREBASE_SA_YUN_SALARY" },
+  huiyun: {
+    project: "yun-salary", clinic: "惠韻牙醫診所", liffVar: "LIFF_ID_HUIYUN", saVar: "FIREBASE_SA_YUN_SALARY",
+    formUrl: "https://urbanhsu.github.io/yun_salary/form.html",
+    rosterPath: "meta/roster", statusPath: (m) => `formStatus/${m}`,
+    theme: { head: "#F7B4A7", sub: "#7A3B30", title: "#4A2520", btn: "#E0705F" },
+    // 每月最後一天推當月；隔月 3 號提醒
+    jobs(today, tomorrow) {
+      const j = [];
+      if (tomorrow.getUTCDate() === 1) j.push({ kind: "open", month: ymOf(today) });
+      if (today.getUTCDate() === 3) j.push({ kind: "remind", month: prevYm(ymOf(today)) });
+      return j;
+    },
+    text({ m, kind, name }) {
+      return {
+        title: `${m} 月回饋單`,
+        alt: kind === "remind" ? `提醒：${m} 月回饋單還沒填` : `${m} 月回饋單開放填寫`,
+        body: kind === "remind"
+          ? `${name ? name + "，" : ""}${m} 月回饋單還沒填喔！請抽空花幾分鐘完成，謝謝 🙏`
+          : `${name ? name + "，" : ""}這個月辛苦了！請花幾分鐘填寫 ${m} 月回饋單。`,
+      };
+    },
+  },
+  huiteng: {
+    project: "huiteng-payroll-ddef6", clinic: "惠騰內科診所", liffVar: "LIFF_ID_HUITENG", saVar: "FIREBASE_SA_HUITENG",
+    formUrl: "https://urbanhsu.github.io/huiteng-payroll/",
+    rosterPath: "meta/roster", statusPath: (m) => `status/${m}`, settingsPath: "meta/settings",
+    theme: { head: "#CFE8D5", sub: "#2F5E40", title: "#1F3D2A", btn: "#4E9A6A" },
+    // 1 號推上個月報表；截止日前一天提醒
+    jobs(today, tomorrow, settings) {
+      const j = [], d = today.getUTCDate(), close = Math.min(28, Math.max(2, +settings.closeDay || 5));
+      if (d === 1) j.push({ kind: "open", month: prevYm(ymOf(today)) });
+      if (d === Math.max(2, close - 1)) j.push({ kind: "remind", month: prevYm(ymOf(today)) });
+      return j;
+    },
+    text({ m, kind, name, settings }) {
+      const close = Math.min(28, Math.max(2, +settings.closeDay || 5)), due = `${m === 12 ? 1 : m + 1}/${close}`;
+      return {
+        title: `${m} 月份報表`,
+        alt: kind === "remind" ? `提醒：${m} 月份報表還沒填` : `${m} 月份報表開放填寫`,
+        body: kind === "remind"
+          ? `${name ? name + "，" : ""}${m} 月份報表還沒填喔！截止日是 ${due}，請抽空完成，謝謝 🙏`
+          : `${name ? name + "，" : ""}${m} 月辛苦了！請在 ${due} 前完成 ${m} 月份報表。`,
+      };
+    },
+  },
 };
 
 /* --- 時間（台灣時間 UTC+8） --- */
@@ -288,16 +336,17 @@ const prevYm = (ym) => { const y = +ym.slice(0, 4), m = +ym.slice(4); return m =
 
 export async function feedbackCron(env, now = new Date()) {
   const today = tpe(now), tomorrow = tpe(new Date(now.getTime() + 86400e3));
-  const jobs = [];
-  if (tomorrow.getUTCDate() === 1) jobs.push({ kind: "open", month: ymOf(today) });      // 每月最後一天
-  if (today.getUTCDate() === 3) jobs.push({ kind: "remind", month: prevYm(ymOf(today)) }); // 隔月 3 號
   const out = [];
-  for (const job of jobs) for (const sys of Object.keys(FEEDBACK)) {
+  for (const [sys, cfg] of Object.entries(FEEDBACK)) {
+    let settings = {};
+    if (cfg.settingsPath) { try { settings = await fsGet(cfg.project, cfg.settingsPath); } catch (e) { console.error(e); } }
+    for (const job of cfg.jobs(today, tomorrow, settings)) {
     const runKey = `fbrun:${sys}:${job.month}:${job.kind}`;
     if (await env.KV.get(runKey)) { out.push({ sys, ...job, skipped: "already_ran" }); continue; }
     const r = await feedbackPush(env, sys, job.month, job.kind, { notify: true });
     if (!r.error) await env.KV.put(runKey, new Date().toISOString(), { expirationTtl: 86400 * 40 });
     out.push({ sys, ...job, ...r });
+    }
   }
   if (out.length) console.log(JSON.stringify(out));
   return out;
@@ -329,26 +378,23 @@ async function retryKeyFor(s) { // 同一人同一份同一種推播 → 固定�
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
-export function feedbackFlex({ month, kind, url, name }) {
-  const m = +month.slice(4);
-  const title = `${m} 月回饋單`;
-  const text = kind === "remind"
-    ? `${name ? name + "，" : ""}${m} 月回饋單還沒填喔！請抽空花幾分鐘完成，謝謝 🙏`
-    : `${name ? name + "，" : ""}這個月辛苦了！請花幾分鐘填寫 ${m} 月回饋單。`;
+export function feedbackFlex({ sys, month, kind, url, name, settings = {} }) {
+  const cfg = FEEDBACK[sys], c = cfg.theme;
+  const { title, alt, body: text } = cfg.text({ m: +month.slice(4), kind, name, settings });
   return {
     type: "flex",
-    altText: kind === "remind" ? `提醒：${title}還沒填` : `${title}開放填寫`,
+    altText: alt,
     contents: {
       type: "bubble", size: "kilo",
-      header: { type: "box", layout: "vertical", backgroundColor: "#F7B4A7", paddingAll: "16px", contents: [
-        { type: "text", text: kind === "remind" ? "小提醒" : "每月回饋", size: "xs", color: "#7A3B30" },
-        { type: "text", text: title, size: "xl", weight: "bold", color: "#4A2520", margin: "xs" },
+      header: { type: "box", layout: "vertical", backgroundColor: c.head, paddingAll: "16px", contents: [
+        { type: "text", text: kind === "remind" ? "小提醒" : cfg.clinic, size: "xs", color: c.sub },
+        { type: "text", text: title, size: "xl", weight: "bold", color: c.title, margin: "xs" },
       ] },
       body: { type: "box", layout: "vertical", paddingAll: "16px", contents: [
         { type: "text", text, wrap: true, size: "sm", color: "#555555" },
       ] },
       footer: { type: "box", layout: "vertical", paddingAll: "12px", contents: [
-        { type: "button", style: "primary", color: "#E0705F", height: "sm", action: { type: "uri", label: "開始填寫", uri: url } },
+        { type: "button", style: "primary", color: c.btn, height: "sm", action: { type: "uri", label: "開始填寫", uri: url } },
       ] },
     },
   };
@@ -357,12 +403,13 @@ export function feedbackFlex({ month, kind, url, name }) {
 export async function feedbackPush(env, sys, month, kind, { dryRun = false, notify = true } = {}) {
   const cfg = FEEDBACK[sys];
   const liff = env[cfg.liffVar];
-  if (!liff) return { error: "no_liff_id" };
-  const url = `https://liff.line.me/${liff}?m=${month}`;
-  let roster, submitted = {};
+  // 有 LIFF 就用 LINE 免密碼登入；還沒設定時直接開填單網址（密碼登入）
+  const url = liff ? `https://liff.line.me/${liff}?m=${month}` : `${cfg.formUrl}?m=${month}`;
+  let roster, submitted = {}, settings = {};
   try {
-    roster = (await fsGet(cfg.project, "meta/roster")).people || [];
-    if (kind === "remind") submitted = (await fsGet(cfg.project, `formStatus/${month}`)).submitted || {};
+    roster = (await fsGet(cfg.project, cfg.rosterPath)).people || [];
+    if (kind === "remind") submitted = (await fsGet(cfg.project, cfg.statusPath(month))).submitted || {};
+    if (cfg.settingsPath) settings = await fsGet(cfg.project, cfg.settingsPath);
   } catch (e) {
     console.error(e);
     return { error: "firestore_unreachable" };
@@ -376,18 +423,18 @@ export async function feedbackPush(env, sys, month, kind, { dryRun = false, noti
     if (!bind) { notBound.push(p.name); continue; }
     if (dryRun) { sent.push(p.name); continue; }
     const r = await lineFetch(env, "/message/push",
-      { to: bind.userId, messages: [feedbackFlex({ month, kind, url, name: p.name })] },
+      { to: bind.userId, messages: [feedbackFlex({ sys, month, kind, url, name: p.name, settings })] },
       { "X-Line-Retry-Key": await retryKeyFor(`fb:${sys}:${month}:${kind}:${p.id}`) });
     (r.ok || r.status === 409 ? sent : failed).push(p.name);
   }
-  const m = +month.slice(4);
+  const t = cfg.text({ m: +month.slice(4), kind, name: "", settings }).title;
   let msg;
   if (kind === "open") {
-    msg = `${cfg.clinic} ${m} 月回饋單已推播（${sent.length}/${roster.length}）`;
+    msg = `${cfg.clinic} ${t}已推播（${sent.length}/${roster.length}）`;
   } else {
     msg = sent.length || failed.length
-      ? `${cfg.clinic} ${m} 月回饋單提醒：已提醒 ${sent.join("、") || "—"}`
-      : `${cfg.clinic} ${m} 月回饋單大家都填好了 ✓`;
+      ? `${cfg.clinic} ${t}提醒：已提醒 ${sent.join("、") || "—"}`
+      : `${cfg.clinic} ${t}大家都填好了 ✓`;
   }
   if (failed.length) msg += `\n送出失敗：${failed.join("、")}`;
   if (notBound.length) msg += `\n沒綁 LINE：${notBound.join("、")}`;
@@ -439,7 +486,7 @@ async function liffLogin(req, env) {
   const id = String(link.id).toLowerCase();
   let name = bind.name || id;
   try { // 已離職（不在填單名單上）就不放行
-    const roster = (await fsGet(cfg.project, "meta/roster")).people || [];
+    const roster = (await fsGet(cfg.project, cfg.rosterPath)).people || [];
     const p = roster.find((x) => x && String(x.id).toLowerCase() === id);
     if (roster.length && !p) return json({ error: "not_active" }, 403, h);
     if (p?.name) name = p.name;

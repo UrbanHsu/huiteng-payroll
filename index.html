@@ -291,9 +291,13 @@ const DEFAULT_GREET="又來到一個月的尾聲，這個月辛苦了 💪　謝
 let previewMo=null;
 const fillMonth=mo=>mo===12?1:mo+1;
 function reportMonth(){const d=new Date();let y=d.getFullYear(),m=d.getMonth();if(m===0){m=12;y--;}return ""+y+String(m).padStart(2,"0");}
+// LINE 推播的按鈕會帶 ?m=YYYYMM（經過 LIFF 時可能包在 liff.state 裡）
+function urlMonth(){try{const q=new URLSearchParams(location.search);let m=q.get("m");
+  if(!m&&q.get("liff.state"))m=new URLSearchParams(q.get("liff.state").replace(/^[^?]*\?/,"")).get("m");
+  return /^20\d\d(0[1-9]|1[0-2])$/.test(m||"")?m:null;}catch(e){return null;}}
 const emailOf=id=>id+(window.STAFF_DOMAIN||"@staff.huiteng-payroll.app");
 const pwX=p=>"ht:"+p+":ht";            // Firebase 密碼至少 6 碼，這裡內部補齊，員工仍可設任意長度
-let state={month:reportMonth(),closeDay:5,greeting:"",subs:{},submitted:{},registered:{},contact:{}};
+let state={month:urlMonth()||reportMonth(),closeDay:5,greeting:"",subs:{},submitted:{},registered:{},contact:{}};
 const pwOf=id=>state.registered[id]?"set":"";
 const subs=()=>state.subs;
 const fb=()=>window.FB;
@@ -455,7 +459,7 @@ function renderProgress(){
 }
 
 /* ---------- 登入 → 填單 ---------- */
-let activePerson=null,unlocked={},stage="login",loginSel=null,editMode=false;
+let activePerson=null,unlocked={},stage="login",loginSel=null,editMode=false,viaLine=false;
 function goIdle(){try{fb()&&fb().signOut(fb().auth);}catch(e){}stage="login";editMode=false;activePerson=null;loginSel=null;renderWho();renderForm();renderProgress();}
 function renderWho(){
   const el=$("#pickArea");
@@ -563,7 +567,7 @@ function renderForm(){
   const pxs=(me.id===TABLE_FILLER?[]:(PROXY_FOR[me.id]||[])).map(id=>{const ps=subs()[id]||(subs()[id]={peer:{},att:{},metrics:{}});ps.attProxy=ps.attProxy||{by:me.id};ps.attProxy.by=me.id;return {p:byId(id),att:ps.attProxy};});
   const pxAtt=id=>pxs.find(x=>x.p.id===id);
   area.innerHTML=`
-    <div class="who-bar"><span>已登入：<b>${me.name}</b>（${me.role}）</span><span class="acts"><button class="btn mini" id="chgPwBtn" type="button" aria-expanded="false">修改密碼</button><button class="btn mini" id="logoutBtn" type="button">登出</button></span></div>
+    <div class="who-bar"><span>已登入：<b>${me.name}</b>（${me.role}）</span><span class="acts">${viaLine?"":'<button class="btn mini" id="chgPwBtn" type="button" aria-expanded="false">修改密碼</button>'}<button class="btn mini" id="logoutBtn" type="button">登出</button></span></div>
     <section class="card" id="chgPwCard" hidden><h2>修改密碼</h2>
       <div class="login-pw" style="margin-top:6px"><div class="field"><label for="curPw">目前密碼</label><input id="curPw" type="password" autocomplete="current-password"></div>
       <div class="field"><label for="chPw1">新密碼</label><input id="chPw1" type="password" autocomplete="new-password"></div>
@@ -612,7 +616,7 @@ function renderForm(){
   area.querySelectorAll("[data-ok]").forEach(i=>i.oninput=()=>{const k=i.dataset.ok,o=sub.metrics[k+"_other"]=sub.metrics[k+"_other"]||{};o[i.dataset.of]=i.dataset.of==="amt"?numOrNull(i.value):i.value;upd(k);});
   $("#cancelBtn").onclick=goIdle;
   if($("#chgEmail"))$("#chgEmail").onclick=()=>{const c=$("#emailCard");c.hidden=false;c.scrollIntoView({behavior:"smooth",block:"center"});$("#myEmail").focus();$("#myEmail").select();};$("#logoutBtn").onclick=goIdle;
-  $("#chgPwBtn").onclick=()=>{const c=$("#chgPwCard");c.hidden=!c.hidden;$("#chgPwBtn").setAttribute("aria-expanded",!c.hidden);if(!c.hidden)$("#curPw").focus();};
+  if($("#chgPwBtn"))$("#chgPwBtn").onclick=()=>{const c=$("#chgPwCard");c.hidden=!c.hidden;$("#chgPwBtn").setAttribute("aria-expanded",!c.hidden);if(!c.hidden)$("#curPw").focus();};
   $("#chPwSave").onclick=()=>{const e=m=>{$("#chPwErr").textContent=m;};
     const F=fb();
     const a=$("#chPw1").value,b=$("#chPw2").value;
@@ -640,17 +644,39 @@ function renderForm(){
 function renderAll(){renderHeader();renderProgress();renderWho();renderForm();}
 renderAll();
 startCloud();
+// 從 LINE 打開、推播中心驗證過身分後直接進入填單（不用密碼）
+window.liffEnter=async(id)=>{if(!byId(id))return false;
+  try{await loadMine(id);}catch(e){return false;}
+  viaLine=true;unlocked[id]=true;activePerson=id;loginSel=id;stage="form";renderWho();renderForm();
+  $("#formArea")?.scrollIntoView({behavior:"smooth",block:"start"});toast(byId(id).name+"，已用 LINE 登入");return true;};
 </script>
 
 <script type="module">
-import {firebaseConfig,STAFF_DOMAIN as SD,isConfigured} from "./firebase-config.js?v=20261111c";
+import {firebaseConfig,STAFF_DOMAIN as SD,isConfigured,LINE_CENTER_URL,LINE_SYSTEM,LIFF_ID} from "./firebase-config.js?v=20261122a";
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getAuth,signInWithCustomToken,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 if(!isConfigured()){document.getElementById("pickArea").innerHTML='<section class="card"><h2>系統設定中</h2><div class="sub">表單尚未連上資料庫，請稍後再試。</div></section>';throw new Error("firebase-config.js 尚未設定");}
 window.STAFF_DOMAIN=SD;
 const app=initializeApp(firebaseConfig);
 window.FB={auth:getAuth(app),db:getFirestore(app),signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider,doc,getDoc,setDoc,onSnapshot,serverTimestamp};
 window.dispatchEvent(new Event("fb-ready"));
+
+// ---- LINE（LIFF）免密碼登入：只在 LINE 裡打開、且設定了 LIFF_ID 時啟用；失敗就照常用密碼登入 ----
+async function liffLogin(){
+  if(!LIFF_ID||!(/\bLine\//i.test(navigator.userAgent)||location.search.includes("liff.state")))return;
+  try{
+    await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://static.line-scdn.net/liff/edge/2/sdk.js";sc.onload=ok;sc.onerror=no;document.head.appendChild(sc);});
+    await liff.init({liffId:LIFF_ID});
+    if(!liff.isLoggedIn())return;
+    const idToken=liff.getIDToken();if(!idToken)return;
+    const r=await fetch(LINE_CENTER_URL+"/api/liff-login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({system:LINE_SYSTEM,idToken})});
+    const j=await r.json().catch(()=>({}));
+    if(!j.token){const msg={not_bound:"這個 LINE 還沒綁定，請用密碼登入",not_active:"找不到你的填單資料，請用密碼登入"}[j.error];if(msg)setTimeout(()=>{const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),4000);},300);return;}
+    await signInWithCustomToken(window.FB.auth,j.token);
+    await window.liffEnter(j.id);
+  }catch(e){console.warn("LINE 登入失敗，改用密碼登入",e);}
+}
+liffLogin();
 </script>
 </body></html>

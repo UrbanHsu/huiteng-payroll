@@ -163,7 +163,7 @@ addEventListener("error", (e) => { const m = document.querySelector("main"); if 
   document.querySelector("#bootErr .err").textContent = (e.message || "") + (e.filename ? "（" + e.filename.split("/").pop() + "）" : ""); }, true);
 </script>
 <script type="module">
-import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS } from "./firebase-config.js?v=20261111c";
+import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS } from "./firebase-config.js?v=20261122a";
 import { slipFlexMessage } from "./line-flex.js?v=20261111c";
 import { computePayroll, absentSessions } from "./engine.js?v=20261111c";
 
@@ -215,10 +215,23 @@ $("#pw").onkeydown = (e) => { if (e.key === "Enter") doLogin(); };
 $("#logoutBtn").onclick = () => A.signOut(auth);
 
 /* ---------- data ---------- */
+// 公開填單名單（只有代號與名字）：LINE 推播中心據此決定每月推給誰（管理者不填報表，不列入）
+async function syncRoster() {
+  try {
+    const list = (S.params?.people || []).filter((p) => p.role !== "管理者").map((p) => ({ id: p.id, name: p.name }));
+    if (!list.length) return;
+    const sig = JSON.stringify(list);
+    const cur = await F.getDoc(F.doc(db, "meta", "roster"));
+    if (cur.exists() && JSON.stringify(cur.data().people || []) === sig) return;
+    await F.setDoc(F.doc(db, "meta", "roster"), { people: list, updatedAt: new Date().toISOString() });
+  } catch (e) { console.warn("roster", e); }
+}
+
 async function loadAll() {
   try {
     const p = await F.getDoc(F.doc(db, "admin", "params"));
     S.params = p.exists() ? p.data() : null;
+    syncRoster();
   } catch (e) {
     $("#v-data").innerHTML = `<div class="card"><h2>沒有管理者權限</h2><div class="sub">這個帳號不在 firestore.rules 的管理者名單中。</div></div>`;
     showView("data"); return;
