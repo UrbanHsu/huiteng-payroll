@@ -24,7 +24,7 @@ export const LINE_CENTER_URL = "https://hh-line-center.huihui-clinic.workers.dev
 /** 這套系統在推播中心的代號、診所名稱（印在 LINE 薪資單抬頭） */
 export const LINE_SYSTEM = "huiteng";
 /** 填單頁的 LIFF ID（LINE 裡打開時免密碼登入；空字串＝不啟用） */
-export const LIFF_ID = "";
+export const LIFF_ID = "2012745032-Yy22qiSt";
 export const CLINIC_NAME = "惠騰內科診所";
 /** 員工加好友連結 */
 export const LINE_ADD_FRIEND_URL = "https://lin.ee/nmhN9bY";

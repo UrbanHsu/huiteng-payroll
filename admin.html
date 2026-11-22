@@ -163,7 +163,7 @@ addEventListener("error", (e) => { const m = document.querySelector("main"); if 
   document.querySelector("#bootErr .err").textContent = (e.message || "") + (e.filename ? "（" + e.filename.split("/").pop() + "）" : ""); }, true);
 </script>
 <script type="module">
-import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS } from "./firebase-config.js?v=20261122a";
+import { firebaseConfig, STAFF_DOMAIN, isConfigured, LINE_CENTER_URL, LINE_SYSTEM, CLINIC_NAME, LINE_ADD_FRIEND_URL, LINE_WATCHERS } from "./firebase-config.js?v=20261122b";
 import { slipFlexMessage } from "./line-flex.js?v=20261111c";
 import { computePayroll, absentSessions } from "./engine.js?v=20261111c";
 

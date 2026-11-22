@@ -16,11 +16,11 @@ ADMIN_EMAIL_HASHES = "6df5deb4c527cac752745cf572c3a675cf3531616796ed142641722738
 ALLOWED_ORIGINS = "https://urbanhsu.github.io"
 # LINE Login channel 的 Channel ID（LIFF 所在的 channel；公開資訊）；兩間診所各一個 channel
 LINE_LOGIN_CHANNEL_ID_HUIYUN = "2012744796"
-LINE_LOGIN_CHANNEL_ID_HUITENG = ""
+LINE_LOGIN_CHANNEL_ID_HUITENG = "2012745032"
 # 惠韻回饋單的 LIFF ID（建好 LIFF 後填入；公開資訊）
 LIFF_ID_HUIYUN = "2012744796-T8IXkC9c"
 # 惠騰報表的 LIFF ID
-LIFF_ID_HUITENG = ""
+LIFF_ID_HUITENG = "2012745032-Yy22qiSt"
 
 # 每天 08:00 UTC＝台灣 16:00；各系統自己判斷今天要不要推（見 src/index.js 的 FEEDBACK）
 [triggers]
