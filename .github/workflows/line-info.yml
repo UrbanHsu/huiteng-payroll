@@ -1,0 +1,30 @@
+name: 查詢 LINE 官方帳號資訊
+
+# 手動執行：顯示官方帳號名稱、ID、本月推播額度與用量（不會顯示任何金鑰）
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 查詢
+        env:
+          TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          H="Authorization: Bearer $TOKEN"
+          BOT=$(curl -fsS -H "$H" https://api.line.me/v2/bot/info)
+          Q=$(curl -fsS -H "$H" https://api.line.me/v2/bot/message/quota)
+          U=$(curl -fsS -H "$H" https://api.line.me/v2/bot/message/quota/consumption)
+          {
+            echo "### LINE 官方帳號"
+            echo "- 名稱：$(echo "$BOT" | jq -r .displayName)"
+            echo "- 帳號 ID：$(echo "$BOT" | jq -r .basicId)"
+            echo "- 聊天模式：$(echo "$BOT" | jq -r .chatMode)"
+            echo "- 本月額度：$(echo "$Q" | jq -r 'if .type=="limited" then "\(.value) 則" else "無上限" end')"
+            echo "- 本月已用：$(echo "$U" | jq -r .totalUsage) 則"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
